@@ -1,0 +1,21 @@
+# R STUDIO - RECURSIVE
+.Rproj.user/**
+.Rhistory
+.RData
+.Ruserdata
+
+# PARENTS - RECURSIVE  
+../**
+../../**
+
+# SPECIFIC
+OneDrive/UniversityofExeter
+PhD/
+intuitive beh/**
+.DS_Store
+
+!docs/
+
+.Rproj.user
+.httr-oauth
+.quarto
