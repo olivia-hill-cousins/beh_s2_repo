@@ -15,6 +15,9 @@ intuitive beh/**
 .DS_Store
 .gitignore
 custom.css
+*.Rmd
+*.Rproj
+
 
 
 !pre-reg materials/
