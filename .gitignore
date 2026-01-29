@@ -2,7 +2,7 @@
 *
 
 # But NOT these:
-
+!.gitignore/
 !pre-reg materials/
 !pre-reg materials/**
 .Rproj.user
