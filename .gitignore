@@ -1,28 +1,13 @@
-# R STUDIO - RECURSIVE
-.Rproj.user/**
-.Rhistory
-.RData
-.Ruserdata
+# Ignore everything
+*
 
-# PARENTS - RECURSIVE  
-../**
-../../**
-
-# SPECIFIC
-OneDrive/UniversityofExeter
-PhD/
-intuitive beh/**
-.DS_Store
-.gitignore
-custom.css
-*.Rmd
-*.Rproj
-
-
+# But NOT these:
 
 !pre-reg materials/
-
+!pre-reg materials/**
 .Rproj.user
+.Rhistory
+.RData
 .httr-oauth
+.DS_Store
 .quarto
-
