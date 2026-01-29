@@ -13,9 +13,13 @@ OneDrive/UniversityofExeter
 PhD/
 intuitive beh/**
 .DS_Store
+.gitignore
+customcss
+
 
 !pre-reg materials/
 
 .Rproj.user
 .httr-oauth
 .quarto
+
