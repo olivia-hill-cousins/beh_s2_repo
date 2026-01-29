@@ -14,7 +14,7 @@ PhD/
 intuitive beh/**
 .DS_Store
 
-!docs/
+!pre-reg materials/
 
 .Rproj.user
 .httr-oauth
