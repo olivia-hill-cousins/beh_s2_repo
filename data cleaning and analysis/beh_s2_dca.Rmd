@@ -98,26 +98,19 @@ set.seed(123)
 ## Read in Data
 
 ```{r, setup - data, eval=FALSE}
-# Human 
-# Where key for yes=F
-dataF.h <- read.csv("xx.csv", header=TRUE, na.strings="")
-# Where key for yes=J
-dataJ.h <- read.csv("xx.csv", header=TRUE, na.strings="")
-# AI 
 # Where key for yes=F
 dataF <- read.csv("xx.csv", header=TRUE, na.strings="")
 # Where key for yes=J
 dataJ <- read.csv("xx.csv", header=TRUE, na.strings="")
 # demographics
 demo <- read.csv("xx.csv", header=TRUE, na.strings="")
-
 ```
 
 ## Join Key-Segregated Data
 
 ```{r, join key data}
 # combine data
-df <- rbind(dataF.h,dataJ.h,dataF, dataJ)
+df <- rbind(dataF, dataJ)
 
 # keep only data rows with moral judgements, remove irrelevant rows (e.g., instructions, etc)
 df <- df %>% 
