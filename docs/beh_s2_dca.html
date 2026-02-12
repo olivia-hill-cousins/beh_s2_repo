@@ -2000,39 +2000,8 @@ Contrasts</h3>
 contrasts_hVai</code></pre>
 </div>
 </div>
-<div id="subset-data" class="section level2" number="3.2">
-<h2><span class="header-section-number">3.2</span> Subset Data</h2>
-<pre class="r"><code>ai.df &lt;- subset(df, agent == &quot;AI&quot;) 
-human.df &lt;- subset(df, agent == &quot;Human&quot;)</code></pre>
-<div id="mixed-effects-logistic-regression-two-way" class="section level3" number="3.2.1">
-<h3><span class="header-section-number">3.2.1</span> Mixed Effects
-Logistic Regression (Two-Way)</h3>
-<div id="human" class="section level4" number="3.2.1.1">
-<h4><span class="header-section-number">3.2.1.1</span> Human</h4>
-<p>Here we reduce the interaction of PDE and PBH as well for the ID
-random slope.</p>
-<pre class="r"><code>h_glm &lt;- glmer(MJ ~ PBH*PDE +  (1+PDE+PBH|ID) + (1|dilemma),  data=human.df, family = binomial(link = &quot;logit&quot;),
-               control = glmerControl(optCtrl = list(maxfun = 2e5), optimizer = &quot;bobyqa&quot;))
-
-summary(h_glm)
-
-confint(h_glm)</code></pre>
-</div>
-<div id="ai" class="section level4" number="3.2.1.2">
-<h4><span class="header-section-number">3.2.1.2</span> AI</h4>
-<p>Here we reduce the interaction of PBH and PDE as well for the ID
-random slope.</p>
-<pre class="r"><code>ai_glm &lt;- glmer(MJ ~ PBH*PDE +  (1+PDE+PBH|ID) + (1|dilemma),  data=ai.df, family = binomial(link = &quot;logit&quot;),
-               control = glmerControl(optCtrl = list(maxfun = 2e5), optimizer = &quot;bobyqa&quot;))
-
-summary(ai_glm)
-
-confint(ai_glm)</code></pre>
-</div>
-</div>
-</div>
-<div id="mixed-effects-linear-regression-three-way-w.-rt-as-dv" class="section level2" number="3.3">
-<h2><span class="header-section-number">3.3</span> Mixed Effects Linear
+<div id="mixed-effects-linear-regression-three-way-w.-rt-as-dv" class="section level2" number="3.2">
+<h2><span class="header-section-number">3.2</span> Mixed Effects Linear
 Regression (Three-Way) w. RT as DV</h2>
 <pre class="r"><code>hVaiRT &lt;- glmer(RT ~ PBH*PDE*agent +  (1+PDE*PBH*agent|ID) + (1+agent|dilemma),  data=df)
 
@@ -2052,59 +2021,18 @@ Odds Ratios so they are easier to interpret</h3>
 lower &lt;- exp(confint(hVai)[,1])
 upper &lt;- exp(confint(hVai)[,2])</code></pre>
 </div>
-<div id="subsetted-data" class="section level3" number="4.0.2">
-<h3><span class="header-section-number">4.0.2</span> Subsetted Data</h3>
-<div id="human-1" class="section level4" number="4.0.2.1">
-<h4><span class="header-section-number">4.0.2.1</span> Human</h4>
-<pre class="r"><code>OR_h &lt;- exp(coef(summary(h_glm))[, &quot;Estimate&quot;])
-
-lower &lt;- exp(confint(h_glm)[,1])
-upper &lt;- exp(confint(h_glm)[,2])</code></pre>
-</div>
-<div id="ai-1" class="section level4" number="4.0.2.2">
-<h4><span class="header-section-number">4.0.2.2</span> AI</h4>
-<pre class="r"><code>OR_ai &lt;- exp(coef(summary(ai_glm))[, &quot;Estimate&quot;])
-
-lower &lt;- exp(confint(ai_glm)[,1])
-upper &lt;- exp(confint(ai_glm)[,2])</code></pre>
-</div>
-</div>
-<div id="change-lmertest-summary-to-lmermod-for-stargazer" class="section level3" number="4.0.3">
-<h3><span class="header-section-number">4.0.3</span> Change LmerTest
+<div id="change-lmertest-summary-to-lmermod-for-stargazer" class="section level3" number="4.0.2">
+<h3><span class="header-section-number">4.0.2</span> Change LmerTest
 Summary to LmerMod for Stargazer</h3>
 <pre class="r"><code>class(hVai) &lt;- &quot;lmerMod&quot;</code></pre>
 </div>
-<div id="subsetted-data-1" class="section level3" number="4.0.4">
-<h3><span class="header-section-number">4.0.4</span> Subsetted Data</h3>
-<div id="human-2" class="section level4" number="4.0.4.1">
-<h4><span class="header-section-number">4.0.4.1</span> Human</h4>
-<pre class="r"><code>class(h_glm) &lt;- class(ai_glm) &lt;- &quot;lmerMod&quot;</code></pre>
-</div>
-</div>
-<div id="create-regression-table-for-moral-judgements" class="section level3" number="4.0.5">
-<h3><span class="header-section-number">4.0.5</span> Create Regression
+<div id="create-regression-table-for-moral-judgements" class="section level3" number="4.0.3">
+<h3><span class="header-section-number">4.0.3</span> Create Regression
 Table for Moral Judgements</h3>
 <pre class="r"><code>stargazer(hVai, type = &quot;html&quot;, title=&quot;Logistic GLMM Human v AI MJs explained by MG&quot;, 
           ci=TRUE, intercept.bottom = FALSE,
           star.cutoffs = c(0.05, 0.01, 0.001),
           digit.separator = &quot;&quot;, out = &quot;hVai_MJ_table.html&quot;)</code></pre>
-</div>
-<div id="subsetted-data-2" class="section level3" number="4.0.6">
-<h3><span class="header-section-number">4.0.6</span> Subsetted Data</h3>
-<div id="human-3" class="section level4" number="4.0.6.1">
-<h4><span class="header-section-number">4.0.6.1</span> Human</h4>
-<pre class="r"><code>stargazer(h_glm, type = &quot;html&quot;, title=&quot;Logistic GLMM Human-Only MJs explained by MG&quot;, 
-          ci=TRUE, intercept.bottom = FALSE,
-          star.cutoffs = c(0.05, 0.01, 0.001),
-          digit.separator = &quot;&quot;, out = &quot;h_MJ_table.html&quot;)</code></pre>
-</div>
-<div id="ai-2" class="section level4" number="4.0.6.2">
-<h4><span class="header-section-number">4.0.6.2</span> AI</h4>
-<pre class="r"><code>stargazer(ai_glm, type = &quot;html&quot;, title=&quot;Logistic GLMM AI-Only MJs explained by MG&quot;, 
-          ci=TRUE, intercept.bottom = FALSE,
-          star.cutoffs = c(0.05, 0.01, 0.001),
-          digit.separator = &quot;&quot;, out = &quot;ai_MJ_table.html&quot;)</code></pre>
-</div>
 </div>
 </div>
 <div id="step-4-toast-tests" class="section level1" number="5">
@@ -2118,31 +2046,6 @@ plot(TOaST)
 TOaST &lt;- equivalence_test(hVai, rule = &quot;classic&quot;, range = c(-0.52,0.52))
 TOaST
 plot(TOaST)</code></pre>
-<div id="subsetted-data-3" class="section level3" number="5.0.1">
-<h3><span class="header-section-number">5.0.1</span> Subsetted Data</h3>
-<div id="human-4" class="section level4" number="5.0.1.1">
-<h4><span class="header-section-number">5.0.1.1</span> Human</h4>
-<pre class="r"><code>TOaST_h &lt;- equivalence_test(h_glm, rule = &quot;classic&quot;)
-TOaST_h
-plot(TOaST_h)
-
-# set bounds to OR of 1.68 (log(1.68)=0.52)
-TOaST_h &lt;- equivalence_test(h_glm, rule = &quot;classic&quot;, range = c(-0.52,0.52))
-TOaST_h
-plot(TOaST_h)</code></pre>
-</div>
-<div id="ai-3" class="section level4" number="5.0.1.2">
-<h4><span class="header-section-number">5.0.1.2</span> AI</h4>
-<pre class="r"><code>TOaST_ai &lt;- equivalence_test(ai_glm, rule = &quot;classic&quot;)
-TOaST_ai
-plot(TOaST_ai)
-
-# set bounds to OR of 1.68 (log(1.68)=0.52)
-TOaST_ai &lt;- equivalence_test(ai_glm, rule = &quot;classic&quot;, range = c(-0.52,0.52))
-TOaST_ai
-plot(TOaST_ai)</code></pre>
-</div>
-</div>
 </div>
 <div id="step-5-item-level-analyses" class="section level1" number="6">
 <h1><span class="header-section-number">6</span> STEP 5: Item-Level
@@ -2150,32 +2053,18 @@ Analyses</h1>
 <p>I’m interested in whether each <em>dilemma</em> matches the
 prediction of MG (for each agent), and further, whether these varies
 across <em>participants</em>.</p>
-<p>Therefore, I use the full and subsetted data here to test variations
-of hypotheses re. each agent. Then I add in the prediction of the moral
-grammar to all df</p>
-<pre class="r"><code>human.df$MG_pred &lt;- ifelse(human.df$PBH == &quot;Yes&quot; &amp; human.df$PDE == &quot;No&quot;, 0, 1)
-ai.df$MG_pred &lt;- ifelse(ai.df$PBH == &quot;Yes&quot; &amp; ai.df$PDE == &quot;No&quot;, 0, 1)
-df$MG_pred &lt;- ifelse(df$PBH == &quot;Yes&quot; &amp; df$PDE == &quot;No&quot;, 0, 1)</code></pre>
+<p>Therefore, I use the full data here to test variations of hypotheses
+re. each agent. Then I add in the prediction of the moral grammar to all
+df</p>
+<pre class="r"><code>df$MG_pred &lt;- ifelse(df$PBH == &quot;Yes&quot; &amp; df$PDE == &quot;No&quot;, 0, 1)</code></pre>
 <p>Now let’s add in a variable that tells us whether or not the Ps MJ
 matches the MG prediction:</p>
-<pre class="r"><code>human.df$match_MG &lt;- ifelse(human.df$MJ == human.df$MG, 1, 0)
-ai.df$match_MG &lt;- ifelse(ai.df$MJ == ai.df$MG, 1, 0)
-
-df$match_MG &lt;- ifelse(df$MJ == df$MG, 1, 0)</code></pre>
+<pre class="r"><code>df$match_MG &lt;- ifelse(df$MJ == df$MG, 1, 0)</code></pre>
 <p>Finally, let’s analyse.</p>
 <pre class="r"><code>full_item.level &lt;- glmer(MJ ~ MG  + (1|ID) + (1|dilemma),
                data = df, family = binomial)
 summary(full_item.level)
 
-
-human_item.level &lt;- glmer(MJ ~ MG + (1|ID) + (1|dilemma),
-               data = human.df, family = binomial)
-summary(human_item.level)
-
-
-ai_item.level &lt;- glmer(MJ ~ MG + (1|ID) + (1|dilemma),
-               data = ai.df, family = binomial)
-summary(ai_item.level)
 
 # dilemma
 full_dilemma.level &lt;- glmer(MJ ~ MG  +  (1|dilemma),
@@ -2184,15 +2073,6 @@ summary(full_dilemma.level)
 ranef(full_dilemma.level)$dilemma
 
 
-ai_dilemma.level &lt;- glmer(MJ ~ MG  +  (1|dilemma),
-               data = ai.df, family = binomial)
-summary(ai_dilemma.level)
-ranef(ai_dilemma.level)$dilemma
-
-human_dilemma.level &lt;- glmer(MJ ~ MG  +  (1|dilemma),
-               data = human.df, family = binomial)
-summary(human_dilemma.level)
-ranef(human_dilemma.level)$dilemma
 
 # id
 full_ID.level &lt;- glmer(MJ ~ MG  +  (1|ID),
