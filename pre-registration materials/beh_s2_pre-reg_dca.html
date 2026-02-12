@@ -1487,7 +1487,7 @@ border-radius: 0px;
 <h1 class="title toc-ignore">Pre-Registration: Data Cleaning &amp;
 Analysis Script for Behavioural Study of Moral Judgements of Humans
 vs. AI</h1>
-<h4 class="date">30/01/26</h4>
+<h4 class="date">30/02/26</h4>
 
 </div>
 
@@ -1564,13 +1564,7 @@ library(ltm)</code></pre>
 <h1><span class="header-section-number">2</span> STEP 1: Cleaning</h1>
 <div id="read-in-data" class="section level2" number="2.1">
 <h2><span class="header-section-number">2.1</span> Read in Data</h2>
-<pre class="r"><code># Human 
-# Where key for yes=F
-dataF.h &lt;- read.csv(&quot;xx.csv&quot;, header=TRUE, na.strings=&quot;&quot;)
-# Where key for yes=J
-dataJ.h &lt;- read.csv(&quot;xx.csv&quot;, header=TRUE, na.strings=&quot;&quot;)
-# AI 
-# Where key for yes=F
+<pre class="r"><code># Where key for yes=F
 dataF &lt;- read.csv(&quot;xx.csv&quot;, header=TRUE, na.strings=&quot;&quot;)
 # Where key for yes=J
 dataJ &lt;- read.csv(&quot;xx.csv&quot;, header=TRUE, na.strings=&quot;&quot;)
@@ -1581,7 +1575,7 @@ demo &lt;- read.csv(&quot;xx.csv&quot;, header=TRUE, na.strings=&quot;&quot;)</c
 <h2><span class="header-section-number">2.2</span> Join Key-Segregated
 Data</h2>
 <pre class="r"><code># combine data
-df &lt;- rbind(dataF.h,dataJ.h,dataF, dataJ)
+df &lt;- rbind(dataF, dataJ)
 
 # keep only data rows with moral judgements, remove irrelevant rows (e.g., instructions, etc)
 df &lt;- df %&gt;% 

@@ -1,5 +1,5 @@
 ---
-title: "Pre-Registration: Data Cleaning & Analysis Script for Behavioural Study of Moral Judgements of Humans vs. AI"
+title: "Data Cleaning & Analysis Process for Behavioural Study 2 of Moral Judgements of Humans vs. AI"
 date: "`r format(Sys.Date(), '%d/%m/%y')`"
 output:
   html_document:
