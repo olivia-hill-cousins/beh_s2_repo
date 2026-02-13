@@ -1,4 +1,4 @@
-wd <- "~"
+wd <- "Library/CloudStorage/OneDrive-UniversityofExeter/PhD/Beh. Study (Replication)/beh_s2_repo/data cleaning and analysis"
 set.platform <- function(subdir = "") {
   base_wd <- if (Sys.info()[["sysname"]] == "Darwin") {
     file.path("~/",wd)
@@ -11,13 +11,13 @@ set.platform <- function(subdir = "") {
   full_wd <- if (subdir == "") base_wd else file.path(base_wd, subdir)
   setwd(full_wd)
 }
-
+set.platform()
 ### set seed for reproducibility
 set.seed(123)
 
 ### Load in some packages
 # package names 
-packages <- c("lme4")
+packages <- c("lme4","lmerTest","performance","easystats","dplyr","emmeans")
 # Install packages not yet installed
 installed_packages <- packages %in% rownames(installed.packages())
 if (any(installed_packages == FALSE)) {
@@ -26,30 +26,41 @@ if (any(installed_packages == FALSE)) {
 
 # load packages
 library(lme4)
+library(lmerTest)
+library(performance)
+library(easystats)
+library(dplyr)
+library(emmeans)
+
+### Read in Cleaned Data
+demo <- read.csv("data_clean/beh_s2_cleanedDemo.csv")
+df <- read.csv("data_clean/beh_s2_cleanedData.csv")
+reduced_df <- read.csv("data_clean/beh_s2_reducedCleanedData.csv")
+
 
 
 ### Demographics
 # calculating mean age
-dfDemowide$Age <- as.numeric(dfDemowide$Age)
-mean_age <- mean(dfDemowide$Age)
+demo$Age <- as.numeric(demo$Age)
+mean_age <- mean(demo$Age)
 mean_age
 
 # calculating standard deviation of age
-sd(dfDemowide$Age)
+sd(demo$Age)
 
 # find the age of the youngest participant
-youngest_age <- min(dfDemowide$Age)
+youngest_age <- min(demo$Age)
 youngest_age
 
 # find the age of the oldest participant
-oldest_age <- max(dfDemowide$Age)
+oldest_age <- max(demo$Age)
 oldest_age
 
 # change Other (please specify) to what was specified in next question
-dfDemowide$Gender <- ifelse(dfDemowide$Gender == "Other (please specify)", "Non Binary", dfDemowide$Gender)
+demo$Gender <- ifelse(demo$Gender == "Other (please specify)", "Non Binary", demo$Gender)
 
 # get count of number of participants of each gender
-gender_count <- table(dfDemowide$Gender)
+gender_count <- table(demo$Gender)
 gender_count
 
 woman_count <- gender_count["Woman"]
@@ -67,27 +78,6 @@ anotherWayGender_count
 
 print(gender_count)
 
-# cultural demographics
-
-cultural_cols <- c("cultural.arab", "cultural.asian", "cultural.black", 
-                   "cultural.multiple", "cultural.white", "cultural.prefNo", 
-                   "cultural.another")
-
-# Assign primary cultural category as first non-empty for each participant
-demo <- demo %>%
-  mutate(
-    primary_cultural = case_when(
-      !is.na(cultural.white) & cultural.white != "" ~ "White",
-      !is.na(cultural.black) & cultural.black != "" ~ "Black",
-      !is.na(cultural.asian) & cultural.asian != "" ~ "Asian",
-      !is.na(cultural.arab) & cultural.arab != "" ~ "Arab",
-      !is.na(cultural.multiple) & cultural.multiple != "" ~ "Multiple",
-      !is.na(cultural.prefNo) & cultural.prefNo != "" ~ "No preference",
-      !is.na(cultural.another) & cultural.another != "" ~ "Other (specified)",
-      TRUE ~ NA_character_
-    ),
-    multiple_cultural = rowSums(across(all_of(cultural_cols), ~ !is.na(.) & . != "")) > 1
-  )
 
 # Summary table excluding NAs in primary_cultural
 summary_table <- demo %>%
@@ -100,28 +90,6 @@ print("Summary of primary cultural group and multiple identity flag excluding NA
 print(summary_table)
 
 
-cultural_cols <- c("cultural.arab", "cultural.asian", "cultural.black", 
-                   "cultural.multiple", "cultural.white", "cultural.prefNo", 
-                   "cultural.another")
-
-demo <- demo %>%
-  rowwise() %>%
-  mutate(
-    identified_prefs = list(
-      c_across(all_of(cultural_cols)) %>%
-        keep(~ !is.na(.) && . != "")  # Keep only non-NA non-empty values
-    ),
-    prefs_string = ifelse(length(identified_prefs) == 0, 
-                          NA_character_, 
-                          paste(identified_prefs, collapse = "; "))
-  ) %>%
-  ungroup()
-
-# View results: 
-cultural_count <- demo %>%
-  dplyr::select(ID, primary_cultural, prefs_string) %>%
-  dplyr::arrange(primary_cultural,prefs_string)
-cultural_count
 
 ### Prep variables for analysis
 # make sure everything is factor
@@ -143,7 +111,7 @@ my.coding<-matrix(rep(1/2, 2), ncol=1)
 my.simple<-c-my.coding
 my.simple
 ### Set the Contrast Coding Per Variable
-contrasts(df$PDE)<-my.simple
+contrasts(df$PDE)<- my.simple
 contrasts(df$PDE)
 contrasts(df$BA)<-my.simple
 contrasts(df$BA)
@@ -164,11 +132,38 @@ df <- df %>%
 
 df$MJ <- as.factor(df$MJ)
 
+set.platform("outputs")
 ## Mixed Effects Logistic Regression (Three-Way) w. Moral Judgements as DV
-hVai <- glmer(MJ ~ PBH*PDE*Agent +  (1+PDE*PBH*Agent|ID) + (1+Agent|Dilemma),  data=df, family = binomial(link = "logit"),
+hVai <- glmer(MJ ~ PBH*PDE*Agent +  (1+PBH*PDE*Agent|ID) + (1+Agent|Dilemma),  data=df, family = binomial(link = "logit"),
               control = glmerControl(optCtrl = list(maxfun = 2e5), optimizer = "bobyqa"))
-
+saveRDS(hVai, "fullRE_hVai_glmModel.rds")
+isSingular(hVai)
 summary(hVai)
+
+## drop slopes of RE structure
+## Drop PDE interaction for ID RF
+hVai <- glmer(MJ ~ PBH*PDE*Agent +  (1+PBH*Agent+PDE|ID) + (1+Agent|Dilemma),  data=df, family = binomial(link = "logit"),
+              control = glmerControl(optCtrl = list(maxfun = 2e5), optimizer = "bobyqa"))
+saveRDS(hVai, "dropPDEintRE_hVai_glmModel.rds")
+isSingular(hVai)
+summary(hVai)
+
+## Drop PBH * Agent interaction slope for ID RF
+hVai <- glmer(MJ ~ PBH*PDE*Agent +  (1+PBH+Agent+PDE|ID) + (1+Agent|Dilemma),  data=df, family = binomial(link = "logit"),
+              control = glmerControl(optCtrl = list(maxfun = 2e5), optimizer = "bobyqa"))
+saveRDS(hVai, "dropintRE_hVai_glmModel.rds")
+isSingular(hVai)
+summary(hVai)
+
+## technically fine as no singularity error, but the correlations are still really high
+## drop let's try dropping Agent slope for dilemma
+hVai <- glmer(MJ ~ PBH*PDE*Agent +  (1+PBH+Agent|ID) + (1+Agent|Dilemma),  data=df, family = binomial(link = "logit"),
+              control = glmerControl(optCtrl = list(maxfun = 2e5), optimizer = "bobyqa"))
+saveRDS(hVai, "dropAgentDilRE_hVai_glmModel.rds")
+isSingular(hVai)
+summary(hVai)
+
+### fitting the maximal model provided 
 
 #OR coefficients 
 OR_hVai <- exp(fixef(hVai))
@@ -224,7 +219,14 @@ plot_model(hVai, terms = "PDE", type = "pred")
 plot_model(hVai, terms = "Agent", type = "pred")
 plot_model(hVai, type = "int")
 
+## RT model
+df$logRT <- log(df$RT + 10)
+hVaiRT <- glmer(logRT ~ PBH*PDE*Agent +  (1+PBH|ID) + (1|Dilemma),  data=df)
 
+ci_hVaiRT <- confint(hVaiRT, method = "Wald")
+#OR coefficients 
+OR_hVaiRT <- exp(fixef(hVaiRT))
+ses_hVaiRT <- exp(sqrt(diag(vcov(hVaiRT)))) 
 
 ### Estimated Marginal Means
 emmeans_hVai <- emmeans(hVaiRT, pairwise ~ PBH*PDE|Agent, cov.reduce = range)
@@ -258,7 +260,7 @@ TOaST
 plot(TOaST)
 
 # set bounds to OR of 1.68 (log(1.68)=0.52) 
-TOaST <- equivalence_test(hVai, rule = "classic", range = c(-0.52,0.52))
+TOaST <- equivalence_test(hVai, rule = "classic", range = c(-0.94,0.94))
 TOaST
 plot(TOaST)
 

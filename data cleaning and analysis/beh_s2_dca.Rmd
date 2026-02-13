@@ -706,8 +706,6 @@ df$MG_pred <- ifelse(df$PBH == "Yes" & df$PDE == "No", 0, 1)
 
 Now let's add in a variable that tells us whether or not the Ps MJ matches the MG prediction:
 ```{r matches prediction}
-
-
 df$match_MG <- ifelse(df$MJ == df$MG, 1, 0)
 ```
 
