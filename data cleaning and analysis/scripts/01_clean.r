@@ -7,7 +7,7 @@ set.platform <- function(subdir = "") {
   } else {
     stop("Unknown operating system, set your working directory manually.")
   }
-  # allow empty subdir for top level, or paste others
+  # allow empty subdir for to level, or paste others
   full_wd <- if (subdir == "") base_wd else file.path(base_wd, subdir)
   setwd(full_wd)
 }
@@ -37,6 +37,13 @@ set.platform("data_raw")
 dataF <- read.csv("data_exp_249979-v6_task-nzt8.csv", header=TRUE, na.strings="")
 # Where key for yes=J
 dataJ <- read.csv("data_exp_249979-v6_task-hrcr.csv", header=TRUE, na.strings = "")
+## mistake in coding meant that for dataJ, the keys were incorrectly coded as J=No, F=Yes, so we need to recode these to match dataF where J=Yes, F=No
+dataJ <- dataJ %>%
+  mutate(Response = case_when(
+    Response == "Yes" ~ "No",
+    Response == "No" ~ "Yes",
+    TRUE ~ Response  # keep other responses unchanged
+  ))
 # demographics
 demo <- read.csv("data_exp_249979-v6_questionnaire-qemh.csv", header=TRUE, na.strings="")
 gorilla_demo <- demo
@@ -104,11 +111,54 @@ demo <- demo %>%
   filter(Task.Name == "Generic Demographics")
 
 # load in demo from prolific
-prolific_demo <- read.csv("data_raw/beh_s2_prolific_demographic.csv")
+# the first 3 Ps were run with only the nationality filter on Prolific set to US. To ensure a US homogeneous sample was more closely adhered to, 
+# the remaining Ps were run with the country of residence set to US as well. 
+# It is important to note that the first 3 Ps that completed the study when only the nationality filter was present, also all had US as their
+# country of residence. This means that the sample itself was invariable across these two groups. 
+prolific_demo1 <- read.csv("data_raw/prolific_demographic_export_6989fafedcfe50faf774801e.csv")
 
-# filter prolific_demo by column: Status so removes rows w. "RETURNED" or "TIMED-OUT"
-prolific_demo <- prolific_demo %>% 
-  filter(Status != "RETURNED" & Status != "TIMED-OUT")
+# filter out Ps that returned their submission
+prolific_demo1 <- prolific_demo1 %>% 
+  filter(Status != "RETURNED")
+
+# save df w. all Ps so have value for Ps that dropped out 
+prolific_demo1_full <- prolific_demo1
+
+# filter Ps who timed out
+prolific_demo1 <- prolific_demo1 %>% 
+  filter(Status != "TIMED-OUT")
+
+# show that Ps in prolific_demo1 have Nationality == US and Country.of.Residence == US
+prolific_demo1$Nationality
+prolific_demo1$Country.of.residence
+
+## second data set
+prolific_demo2 <- read.csv("data_raw/prolific_demographic_export_698deddc023416730af28b7e.csv")
+
+# filter Ps that returned their submission
+prolific_demo2 <- prolific_demo2 %>% 
+  filter(Status != "RETURNED")
+
+# save df w. all Ps so have value for Ps that dropped out
+prolific_demo2_full <- prolific_demo2
+
+# filter Ps who timed out
+prolific_demo2 <- prolific_demo2 %>% 
+  filter(Status != "TIMED-OUT")
+
+# show that Ps in prolific_demo2 have Nationality == US and Country.of.Residence == US
+table(prolific_demo2$Nationality, prolific_demo2$Country.of.residence)
+
+# write csv with prolific_demo1_full and prolific_demo2_full combined
+prolific_demo_full <- rbind(prolific_demo1_full, prolific_demo2_full)
+
+write.csv(prolific_demo_full, "data_raw/beh_s2_prolific_demographic_full.csv", row.names = FALSE)
+
+# write csv with prolific_demo1 and prolific_demo2 combined (so only includes Ps who completed the study and didn't time out)
+prolific_demo <- rbind(prolific_demo1, prolific_demo2)
+
+write.csv(prolific_demo, "data_raw/beh_s2_prolific_demographic.csv", row.names = FALSE)
+
 # next, we create a shared column between the two datasets
 # prolific incl. a column called Participant.id which corresponds to the ID column called Participant.Public.ID in demo data
 # therefore, we will rename the Participant.Public.ID column in demo to Participant.id
@@ -117,7 +167,7 @@ demo <- demo %>%
 
 # now we can add the nationality data from prolific_demo to demo using the Participant.id column to ensure these are added to the correct Ps
 demo <- demo %>%
-  left_join(prolific_demo %>% dplyr::select(Participant.id, Nationality), by = "Participant.id")
+  left_join(prolific_demo %>% dplyr::select(Participant.id, Nationality, Country.of.residence), by = "Participant.id")
 
 demo <- demo %>% 
   mutate(
@@ -300,12 +350,13 @@ demo <- demo %>%
     cultural.white = "questionnaire.qemh.cultural.white",
     cultural.prefNo = "questionnaire.qemh.cultural.prefNo",
     cultural.another = "questionnaire.qemh.cultural.another",
-    Nationality = "Nationality"
+    Nationality = "Nationality",
+    Country_of_residence = "Country.of.residence"
   )
 
 # select only columns we renamed above
 demo <- demo %>% 
-  dplyr::select(ID, Gender, Gender.quant, Age, Nationality, cultural.arab, cultural.asian, cultural.black,
+  dplyr::select(ID, Gender, Gender.quant, Age, Nationality, Country_of_residence, cultural.arab, cultural.asian, cultural.black,
                 cultural.multiple, cultural.white, cultural.prefNo, cultural.another)
 
 # demo <- demo %>%
@@ -383,5 +434,5 @@ reduced_df <- df %>%
 save_df <- reduced_df
 save_df <- save_df %>%
   mutate(across(everything(), as.character))
-write.csv(save_df, "data_clean/beh_s2__reducedCleanedData.csv", row.names = FALSE)
+write.csv(save_df, "data_clean/beh_s2_reducedCleanedData.csv", row.names = FALSE)
 

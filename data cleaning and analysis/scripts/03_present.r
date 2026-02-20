@@ -1,4 +1,4 @@
-wd <- "~"
+wd <- "Library/CloudStorage/OneDrive-UniversityofExeter/PhD/Beh. Study (Replication)/beh_s2_repo/data cleaning and analysis"
 set.platform <- function(subdir = "") {
   base_wd <- if (Sys.info()[["sysname"]] == "Darwin") {
     file.path("~/",wd)
@@ -11,10 +11,28 @@ set.platform <- function(subdir = "") {
   full_wd <- if (subdir == "") base_wd else file.path(base_wd, subdir)
   setwd(full_wd)
 }
+set.platform()
 
 ### set seed for reproducibility
 set.seed(123)
 
+### Load in some packages
+# package names 
+packages <- c("RColorBrewer","sysfonts","showtext", "ggplot2","patchwork", "kableExtra", "webshot2")
+# Install packages not yet installed
+installed_packages <- packages %in% rownames(installed.packages())
+if (any(installed_packages == FALSE)) {
+  install.packages(packages[!installed_packages])
+}
+
+# load packages
+library(RColorBrewer)
+library(sysfonts)
+library(showtext)
+library(ggplot2)
+library(patchwork)
+library(kableExtra)
+library(webshot2)
 
 ### load some colours (colour-blind friendly)
 colours <- brewer.pal(12, "Paired")
@@ -41,61 +59,11 @@ georgia_theme <- theme_minimal(base_family = "Georgia") +
   )
 set_theme(georgia_theme)
 
-# Methods
+###############################################################################
+#============== Demographics
+###############################################################################
 
-## Participants
-
-# calculating mean age
-dfDemowide$Age <- as.numeric(dfDemowide$Age)
-mean_age <- mean(dfDemowide$Age)
-
-# calculating standard deviation of age
-sd_age <- sd(dfDemowide$Age)
-
-
-# find the age of the youngest participant
-youngest_age <- min(dfDemowide$Age)
-
-
-# find the age of the oldest participant
-oldest_age <- max(dfDemowide$Age)
-
-
-
-# change Other (please specify) to what was specified in next question
-dfDemowide$Gender <- ifelse(dfDemowide$Gender == "Other (please specify)", "Non-Binary", dfDemowide$Gender)
-
-
-
-# get count of number of participants of each gender
-gender_count <- table(dfDemowide$Gender)
-gender_prop <- prop.table(gender_count) * 100
-
-
-# Print APA-style
-# Demographics summary
-cat("\n\n",
-    "*N* = ", length(unique(dfDemowide$ID)), "\n\n",
-    "*M*~age~ = ", round(mean(dfDemowide$Age, na.rm=TRUE), 2), 
-    ", *SD*~age~ = ", round(sd(dfDemowide$Age, na.rm=TRUE), 2), "\n\n",
-    "*Age* range = ", min(dfDemowide$Age, na.rm=TRUE), "–", max(dfDemowide$Age, na.rm=TRUE), " years", "\n"
-)
-
-
-woman_count <- gender_count["Woman"]
-
-
-man_count <- gender_count["Man"]
-
-
-nonbinary_count <- gender_count["Non-binary"]
-
-prefNoGender_count <- gender_count["Prefer Not To Say"]
-
-anotherWayGender_count <- gender_count["In another way (specify, if you wish)"] 
-
-
-### Gender Composition of Sample
+# table summarising gender composition of sample 
 gender_table <- data.frame(Gender = names(gender_count), 
                            n = as.vector(gender_count), 
                            pct = round(gender_prop, 1))
@@ -105,13 +73,13 @@ kable(gender_table[, c("Gender", "n", "pct.Freq")],
       digits = 1)
 
 # Summary table excluding NAs in primary_cultural
-summary_table <- dfDemowide %>%
+summary_table <- demo %>%
   filter(!is.na(primary_cultural)) %>% # Exclude NAs here
   count(primary_cultural, multiple_cultural) %>%
   mutate(percent = round(100 * n / sum(n), 1),
          label = paste0(n, " (", percent, "%)"))
 # Check unique combinations first
-unique_combos <- dfDemowide %>%
+unique_combos <- demo %>%
   filter(!is.na(primary_cultural)) %>%
   count(primary_cultural, multiple_cultural) %>%
   pull(primary_cultural) %>% unique()
@@ -122,27 +90,22 @@ summary_wide <- summary_table %>%
   tidyr::pivot_wider(names_from = multiple_cultural, 
                      values_from = label, 
                      values_fill = "0 (0.0%)")
-cat('
-<div class="apa-table-title">
-  <span class="table-label">Table 1.</span> Self‑Identified Cultural Ethnicity (Broad Categories)
-</div>')
-kable(summary_wide, col.names = c("Primary", "Single", "Multiple"))  
-cat('</td></tr></table>')
 
 
 # now add the demographics to the data
-dfDemowide$variants_string <- as.factor(dfDemowide$variants_string)
-cult_table <- dfDemowide %>%
-  filter(!is.na(variants_string)) %>%  # Explicit NA exclusion
-  count(variants_string, sort = TRUE) %>%
+
+demo$identified_prefs <- as.factor(demo$identified_prefs)
+cult_table <- demo %>%
+  filter(!is.na(identified_prefs)) %>%  # Explicit NA exclusion
+  count(identified_prefs, sort = TRUE) %>%
   mutate(Percent = round(100 * n / sum(n), 1),
          Label = paste0(n, " (", Percent, "%)")) %>% 
   dplyr::arrange(desc(Percent))
 
 # Build main table
-cult_table <- dfDemowide %>%
-  filter(!is.na(variants_string)) %>%
-  count(variants_string, sort = TRUE) %>%
+cult_table <- demo %>%
+  filter(!is.na(identified_prefs)) %>%
+  count(identified_prefs, sort = TRUE) %>%
   mutate(
     Percent = round(100 * n / sum(n), 1)
   ) %>%
@@ -151,7 +114,7 @@ cult_table <- dfDemowide %>%
 # Create summary row
 total_n <- sum(cult_table$n)
 summary_row <- data.frame(
-  variants_string = "Total sample *N*",
+  identified_prefs = "Total sample *N*",
   n = total_n,
   Percent = "—"
 )
@@ -175,13 +138,21 @@ kable(
   row_spec(nrow(nat_with_total)-1, hline_after = TRUE)   # draws a horizontal line above final row
 cat('</td></tr></table>')
 df$ID <- as.factor(df$ID)
-dfDemowide$ID <- as.factor(dfDemowide$ID)
+demo$ID <- as.factor(demo$ID)
 
-df <- df %>% 
-  left_join(dfDemowide, by = "ID")
 
-### Nationalities
-nat_table <- dfDemowide %>%
+
+
+
+cat('
+<div class="apa-table-title">
+  <span class="table-label">Table 1.</span> Self‑Identified Cultural Ethnicity (Broad Categories)
+</div>')
+kable(summary_wide, col.names = c("Primary", "Single", "Multiple"))  
+cat('</td></tr></table>')
+
+## nationalities table 
+nat_table <- demo %>%
   filter(!is.na(Nationality)) %>%  # Explicit NA exclusion
   count(Nationality, sort = TRUE) %>%
   mutate(Percent = round(100 * n / sum(n), 1),
@@ -189,7 +160,7 @@ nat_table <- dfDemowide %>%
   dplyr::arrange(desc(Percent))
 
 # Build main table
-nat_table <- dfDemowide %>%
+nat_table <- demo %>%
   filter(!is.na(Nationality)) %>%
   count(Nationality, sort = TRUE) %>%
   mutate(
@@ -224,509 +195,1007 @@ kable(
   kable_styling(full_width = TRUE) %>%
   row_spec(nrow(nat_with_total)-1, hline_after = TRUE)   # draws a horizontal line above final row
 
-# Results
-tab_model(hVai,
-          show.se = TRUE,
-          string.se = c("SE"),
-          string.est = c("OR"),
-          dv.labels = c("Moral Judgement"),
-          linebreak = TRUE,
-          show.aic = TRUE,
-          show.dev = TRUE,
-          show.loglik = TRUE,
-          show.reflvl = TRUE,
-          show.re.var = TRUE,
-          show.ngroups = TRUE,
-          p.style = "stars",
-          emph.p=FALSE,
-          pred.labels = c("(Intercept)","PBH Violated","PDE Criteria Met","Agent (AI)","PBH Violated x PDE Criteria Met","PBH Violated x Agent (AI)","PDE Criteria Met x Agent (AI)", "PBH Violated x PDE Criteria Met x Agent (AI)"),
-          title = "Regression Table for Overall Model",
-          CSS = list(
-            css.table = 'border-collapse: collapse;',
-            css.thead = 'border-top: 1px solid black !important;',
-            '.col2' = 'border-bottom: 1px solid black !important;',  # Line above Random Effects
-            'td' = 'border: none !important;',
-            css.footer = 'border: none !important;'
-          )
-)
 
-tab_model(hVai,
-          show.se = TRUE,
-          string.se = c("SE"),
-          dv.labels = c("Moral Judgement"),
-          transform = NULL,
-          linebreak = TRUE,
-          show.aic = TRUE,
-          show.dev = TRUE,
-          show.loglik = TRUE,
-          show.reflvl = TRUE,
-          show.re.var = TRUE,
-          show.ngroups = TRUE,
-          p.style = "stars",
-          emph.p=FALSE,
-          pred.labels = c("(Intercept)","PBH Violated","PDE Criteria Met","Agent (AI)","PBH Violated x PDE Criteria Met","PBH Violated x Agent (AI)","PDE Criteria Met x Agent (AI)", "PBH Violated x PDE Criteria Met x Agent (AI)"),
-          title = "Regression Table for Overall Model",
-          CSS = list(
-            css.table = 'border-collapse: collapse;',
-            css.thead = 'border-top: 1px solid black !important;',
-            '.col2' = 'border-bottom: 1px solid black !important;',  # Line above Random Effects
-            'td' = 'border: none !important;',
-            css.footer = 'border: none !important;'
-          )
-          
-)
-
-hVai_report <- report(hVai)   
-hVai_report
-
-stargazer(hVai, type = "html", 
-          ci.custom = list(ci_hVai),
-          ci=TRUE, intercept.bottom = FALSE,
-          star.cutoffs = c(0.05, 0.01, 0.001),
-          digit.separator = "", out = NULL)
-
-stargazer(hVai, type = "html", 
-          coef = list(OR_hVai),
-          ci.custom = list(ci_hVai.or),
-          se = list(ses_hVai),
-          ci = TRUE, intercept.bottom = FALSE,
-          p.auto = FALSE,
-          star.cutoffs = c(0.05, 0.01, 0.001),
-          digit.separator = "", out = NULL)
-
-make_pred_plot <- function(term) {
-  plot_model(
-    hVai,
-    terms = term,
-    type = "pred",
-    colors = colours
-  ) + georgia_theme +
-    labs(title = NULL)
+###############################################################################
+#============== Analyses
+###############################################################################
+present_analysis <- function(
+    model,
+    OR_labels,
+    OR_title,
+    logOdds_labels,
+    logOdds_title,
+    emmeans_list,
+    contrasts_list,
+    tost_obj,
+    model_comp,
+    diagnostic_plots,
+    prefix = "analysis"
+) {
+  
+  # Ensure folders exist
+  if (!dir.exists("tables")) dir.create("tables")
+  if (!dir.exists("figures")) dir.create("figures")
+  
+  css <- "
+  <style>
+    body, table, th, td {
+      font-family: Georgia, serif;
+      font-size: 11pt !important;
+      color: black !important;
+      line-height: 2 !important;
+      margin-top: 2em !important;
+      margin-bottom: 1em !important;
+    }
+    table, tbody, tr,  td { 
+    border: none !important; 
+    border-collapse: separate !important; }
+    thead th {
+    border-bottom: 1px solid black !important; 
+    border-collapse: separate !important; }
+    /* APA bottom rule (last data row, not the note) */ 
+    tbody tr:last-child td { 
+    border-bottom: 1px solid black !important; 
+    } 
+    /* Remove lines around NOTE row */ 
+    tfoot td { border: none !important; }
+  </style>
+  "
+  
+  # Helper: save data-frame tables
+  save_df_table <- function(df, name) {
+    file <- file.path("tables", paste0(prefix, "_", name, ".html"))
+    
+    html <- knitr::kable(df, format = "html", digits = 3) %>% 
+      add_header_above(c(" " = ncol(df)), line = TRUE) %>% 
+      
+      # APA header rule (row 0)
+      row_spec(0, extra_css = "border-bottom: 2px solid black;") %>%
+      
+      # APA bottom rule (last row = nrow(df) + 1)
+      row_spec(nrow(df) + 1, extra_css = "border-bottom: 1px solid black;") %>%
+      
+      # Apply minimal styling LAST
+      kable_minimal()
+    
+    writeLines(html, file)
+    message("Saved table: ", file)
+  }
+  
+  
+  # Helper: save figures
+  # save_figure <- function(plot, name) {
+  #   file <- file.path("figures", paste0(prefix, "_", name, ".png"))
+  #   ggplot2::ggsave(file, plot, width = 5, height = 3, dpi = 300)
+  #   message("Saved figure: ", file)
+  # }
+  
+  save_fig <- function(plot, name) {
+    file <- file.path("figures", paste0(prefix, "_", name, ".png"))
+    png(filename = file,res = 300, width = 12, height = 8, units = "in")
+    print(plot)
+    dev.off()
+    message("Saved figure: ", file)
+  }
+  # -------------------------
+  # 1. Regression tables (saved directly)
+  # -------------------------
+  
+  capture.output(
+    tab_model(
+      model,
+      show.se = TRUE,
+      string.se = c("SE"),
+      string.est = c("OR"),
+      dv.labels = c("Moral Judgement"),
+      linebreak = TRUE,
+      show.aic = TRUE,
+      show.dev = TRUE,
+      show.loglik = TRUE,
+      show.reflvl = TRUE,
+      show.re.var = TRUE,
+      show.ngroups = TRUE,
+      p.style = "numeric_stars",
+      emph.p=FALSE,
+      pred.labels = OR_labels,
+      title = "", #paste0("Regression Table for ", OR_title, " (OR)"),
+      CSS = list(
+        css.table = "border-collapse: separate !important;",
+        css.thead = "border-top: 1px solid black !important;",
+        '.col2' = "border-bottom: none !important;",
+        'td' = "border: none !important; font-size: 11pt !important;",
+        'th' = "font-weight: normal !important; font-size: 11pt !important;",
+        'body' = "font-family: Georgia, serif !important; font-size: 11pt !important;",
+        css.footer = "border: none !important;"
+      ),
+      
+      file = file.path("tables", paste0(prefix, "_regression_OR.html")),
+      encoding = "UTF-8"
+    )
+  )
+  
+  
+  capture.output(
+    tab_model(
+      model,
+      show.se = TRUE,
+      string.se = c("SE"),
+      dv.labels = c("Moral Judgement"),
+      transform = NULL,
+      linebreak = TRUE,
+      show.aic = TRUE,
+      show.dev = TRUE,
+      show.loglik = TRUE,
+      show.reflvl = TRUE,
+      show.re.var = TRUE,
+      show.ngroups = TRUE,
+      p.style = "numeric_stars",
+      emph.p=FALSE,
+      pred.labels = logOdds_labels,
+      title = " ", #paste0("Regression Table for ", logOdds_title, " (Log-Odds)"),
+      CSS = list(
+        css.table = "border-collapse: separate !important;",
+        css.thead = "border-top: 1px solid black !important;",
+        '.col2' = "border-bottom: none !important;",
+        'td' = "border: none !important; font-size: 11pt !important;",
+        'th' = "font-weight: normal !important; font-size: 11pt !important;",
+        'body' = "font-family: Georgia, serif !important; font-size: 11pt !important;",
+        css.footer = "border: none !important;"
+      ),
+      file = file.path("tables", paste0(prefix, "_regression_logodds.html")),
+      encoding = "UTF-8"
+    )
+  )
+  
+  
+  # 2. Reset theme for sjPlot 
+  set_theme(georgia_theme)
+  
+  # -------------------------
+  # 1b. Dynamic main-effect prediction plots
+  # -------------------------
+  
+  message("Creating main-effect prediction plots...")
+  
+  # Extract all model terms
+  all_terms <- attr(terms(model), "term.labels")
+  
+  # Identify main effects (no colons)
+  main_terms <- grep("^[^:]+$", all_terms, value = TRUE)
+  
+  # Keep only categorical predictors (factors) 
+  categorical_terms <- main_terms[sapply(main_terms, function(x) { 
+    is.factor(model@frame[[x]]) })] 
+  # Loop over each categorical main effect 
+  for (mt in categorical_terms) { 
+    p_main <- plot_model( model, terms = mt, type = "pred", colors = colours, title="") 
+    fname <- paste0("pred_", mt) 
+    save_fig(p_main, fname) 
+    message("Saved main-effect plot: ", fname) 
+  }
+  
+  # 6. Interaction plot
+  # -------------------------
+  # 1c. Dynamic two-way interaction plots
+  # -------------------------
+  
+  message("Creating two-way interaction plots...")
+  
+  # Extract all model terms
+  all_terms <- attr(terms(model), "term.labels")
+  
+  # Identify two-way interactions (exactly one colon)
+  two_way_terms <- grep("^[^:]+:[^:]+$", all_terms, value = TRUE)
+  
+  # Loop over each two-way interaction
+  for (tw in two_way_terms) {
+    
+    # Split "PBH:PDE" into c("PBH", "PDE")
+    vars <- unlist(strsplit(tw, ":"))
+    
+    # Create the plot
+    p_tw <- plot_model(
+      model,
+      type = "int",
+      terms = vars,
+      colors = colours,
+      title = ""
+    )
+    
+    # Save with a clean filename
+    fname <- paste0("interaction_", vars[1], "_", vars[2])
+    save_fig(p_tw, fname)
+    
+    message("Saved two-way interaction plot: ", fname)
+  }
+  
+  p_int <- plot_model(model, type = "int", colors=colours, title= "")
+  save_fig(p_int, "interaction_plot")
+  
+  message("Effect plots saved.")
+  
+  
+  # -------------------------
+  # 2. EMM tables (APA style)
+  # -------------------------
+  
+  for (nm in names(emmeans_list)) {
+    
+    # Extract the actual EMM table
+    df <- as.data.frame(emmeans_list[[nm]]$emmeans)
+    
+    # Keep only the columns you want (first 3 + numeric)
+    df <- df %>%
+      dplyr::select(1:3, emmean, SE, asymp.LCL, asymp.UCL)
+    
+    # Dynamic first 3 column names
+    orig_names <- names(df)[1:3]
+    
+    # Build APA-style kable
+    kable_obj <- kable(
+      df,
+      format = "html",
+      booktabs = FALSE,   # APA does NOT use booktabs
+      digits = 2,
+      col.names = c(orig_names, "EMM", "SE", "LCI", "UCI"),
+      align = c("l", rep("c", ncol(df)-1))
+    ) %>%
+      # # APA top rule
+      # add_header_above(c(" " = ncol(df)), line = TRUE) %>%
+      # # APA header rule
+      # row_spec(0, extra_css = "border-bottom: 2px solid black;") %>%
+      # # APA bottom rule
+      # row_spec(nrow(df), extra_css = "border-bottom: 2px solid black;") %>%
+      kable_styling(full_width = FALSE) %>%
+      footnote(
+        general_title = "Note.",
+        general = "EMMs are on the log-odds scale.",
+        threeparttable = TRUE,
+        footnote_as_chunk = TRUE
+      )
+    
+    # CSS for Georgia (no !important so APA lines remain)
+    
+    # Save HTML
+    html_file <- file.path("tables", paste0(prefix, "_EMM_", nm, ".html"))
+    
+    kableExtra::save_kable(
+      kable_obj,
+      file = html_file,
+      self_contained = TRUE,
+      extra_dependencies = list(htmltools::HTML(css))
+    )
+    
+    message("Saved EMM table: ", html_file)
+  }
+  
+  
+  
+  # -------------------------
+  # 3. Contrasts (APA style)
+  # -------------------------
+  
+  for (nm in names(contrasts_list)) {
+    
+    df <- as.data.frame(contrasts_list[[nm]])
+    df <- df %>%
+      dplyr::select(1:3, estimate, SE, z.ratio, p.value) %>%
+      rename(
+        Est. = estimate,
+        SE = SE,
+        z = z.ratio,
+        p = p.value
+      )
+    names(df) <- sub("_pairwise$", "", names(df))
+    
+    kable_obj <- kable(
+      df,
+      format = "html",
+      booktabs = FALSE,
+      digits = 3,
+      align = c("l", rep("c", ncol(df)-1))
+    ) %>%
+      # APA top rule
+      #add_header_above(c(" " = ncol(df)), line = TRUE) %>%
+      kable_styling(full_width = TRUE) %>%
+      footnote(
+        general_title = "Note.",
+        general = "Estimates are on the log-odds scale.",
+        threeparttable = TRUE,
+        footnote_as_chunk = TRUE
+      )
+    
+    
+    
+    
+    html_file <- file.path("tables", paste0(prefix, "_contrast_", nm, ".html"))
+    
+    kableExtra::save_kable(
+      kable_obj,
+      file = html_file,
+      self_contained = TRUE,
+      extra_dependencies = list(htmltools::HTML(css))
+    )
+    
+    message("Saved contrast table: ", html_file)
+  }
+  
+  
+  # -------------------------
+  # 4. TOST
+  # -------------------------
+  
+  toast_df <- tost_obj %>%
+    as.data.frame() %>%
+    dplyr::select(Parameter, CI_low, CI_high, ROPE_Equivalence, p) %>%
+    tibble::remove_rownames() %>% 
+    rename(
+      Parameter = Parameter,
+      LCI = CI_low,
+      UCI = CI_high,
+      ROPE = ROPE_Equivalence,
+      p = p
+    )
+  
+  kable_obj <- kable(
+    toast_df,
+    format = "html",
+    booktabs = FALSE,
+    digits = 3,
+    row.names = FALSE,
+    align = c("l", rep("c", ncol(toast_df) - 1))
+  ) %>%
+    kable_styling(full_width = FALSE)
+  
+  
+  
+  html_file <- file.path("tables", paste0(prefix, "_TOST_table.html"))
+  
+  kableExtra::save_kable(
+    kable_obj,
+    file = html_file,
+    self_contained = TRUE,
+    extra_dependencies = list(htmltools::HTML(css))
+  )
+  
+  message("Saved TOST table: ", html_file)
+  
+  
+  tost_plot <- plot(tost_obj)
+  tost_plot <- tost_plot +
+    scale_color_brewer(palette = "Paired") +
+    scale_fill_brewer(palette = "Paired") +
+    theme_minimal(base_family = "Georgia") +
+    theme(
+      text        = element_text(family = "Georgia"),
+      axis.title  = element_text(family = "Georgia"),
+      axis.text   = element_text(family = "Georgia"),
+      legend.text = element_text(family = "Georgia"),
+      legend.title= element_text(family = "Georgia"),
+      title       = element_blank()
+    )
+  save_fig(tost_plot, "TOST_plot")
+  
+  # -------------------------
+  # 5. Model comparison
+  # -------------------------
+  model_comp <- model_comp %>%
+    dplyr::select(Name, R2_marginal, R2_conditional, AIC, BIC) %>%
+    rename(
+      Model = Name,
+      'R2 (marg.)' = R2_marginal,
+      'R2 (cond.)' = R2_conditional,
+      AIC = AIC,
+      BIC = BIC
+    )
+  
+  kable_df <- kable(
+    model_comp,
+    format = "html",
+    booktabs = FALSE,
+    digits = 3,
+    align = c("l", rep("c", ncol(model_comp) - 1))
+  ) %>%
+    kable_styling(full_width = FALSE) 
+  
+  
+  save_kable(
+    kable_df,
+    file = file.path("tables", paste0(prefix, "_model_comparison.html")),
+    self_contained = TRUE,
+    extra_dependencies = list(htmltools::HTML(css))
+  )
+  
+  
+  # -------------------------
+  # 6. Diagnostics
+  # -------------------------
+  # format them
+  diagnostic_plots <- lapply(diagnostic_plots, function(p) {
+    if (inherits(p, "ggplot")) {
+      p$labels$title <- NULL
+      p$labels$subtitle <- NULL
+      p <- p + georgia_theme
+    }
+    p
+  })
+  for (i in seq_along(diagnostic_plots)) {
+    #save_figure(diagnostic_plots[[i]], paste0("diagnostic_", i))
+    save_fig(diagnostic_plots[[i]], paste0("diagnostic_", i))
+  }
+  
+  # plot linearity of predicted response
+  pr <- predict_response(model, terms = categorical_terms)
+  plot_pr <- plot(pr, show_residuals = TRUE, show_residuals_line = TRUE, grid = FALSE) + georgia_theme +
+    theme(title = element_blank())
+  save_fig(plot_pr, "diagnostic_pred_response")
+  message("Diagnostic plots saved.")
+  
 }
 
-p_PBH   <- make_pred_plot("PBH")
-p_PDE   <- make_pred_plot("PDE")
-p_Agent <- make_pred_plot("Agent")
-
-
-library(patchwork)
-
-# row 1: PBH and PDE
-#row1 <- plot_spacer() + p_PBH + plot_spacer() + p_PDE  + plot_spacer() +
-# plot_layout(nrow = 1, widths = c(0.1,3,0.3, 3,0.1001))  # tiny spacer to preserve sizing
-
-row1 <- plot_spacer() + p_PBH + plot_spacer() +
-  plot_layout(nrow = 1, widths = c(1, 3, 1))
-row1b <- plot_spacer() + p_PDE + plot_spacer() +
-  plot_layout(nrow = 1, widths = c(1, 3, 1))
-# row 2: centred Agent plot
-row2 <- plot_spacer() + p_Agent + plot_spacer() +
-  plot_layout(nrow = 1, widths = c(1, 3, 1))
-
-row1
-row2
-
-
-############################################################
-# 2. INTERACTION PLOTS
-############################################################
-
-p_int_list <- plot_model(hVai, type = "int", colors = colours)
-
-# Apply formatting
-p_int_list <- lapply(
-  p_int_list,
-  function(p) p + georgia_theme +
-    labs(title = NULL)
-)
-
-row1 <- plot_spacer() + p_int_list[[1]] + plot_spacer() +
-  plot_layout(nrow = 1, widths = c(1, 3, 1))
-row1b <- plot_spacer() + p_int_list[[2]] + plot_spacer() +
-  plot_layout(nrow = 1, widths = c(1, 3, 1))
-row2 <- plot_spacer() + p_int_list[[3]] + plot_spacer() +
-  plot_layout(nrow = 1, widths = c(1, 3, 1))
-row2b <- plot_spacer() + p_int_list[[4]] + plot_spacer() +
-  plot_layout(nrow = 1, widths = c(1, 3, 1))
-#plot_spacer() + p_int_list[[1]]  + plot_spacer() + p_int_list[[2]]   + plot_spacer() +
-#plot_layout(nrow = 1, widths = c(0.1,3,0.3, 3,0.1001))  # tiny spacer to preserve sizing
-
-row1
-row1b
-row2
-row2b
-
-emm_agent <- emm_agent %>% 
-  dplyr::select(Agent, PBH, PDE, emmean, SE, asymp.LCL, asymp.UCL)
-cat('
-<div class="apa-table-title">
-  <span class="table-label">Table 3.</span> Estimated marginal means by PBH × PDE within Agent
-</div>')
-kable(
-  emm_agent,
-  booktabs = TRUE, 
-  longtable = TRUE,
-  escape = FALSE,
-  digits = 2,
-  label = NA,
-  col.names = c("Agent", "PBH", "PDE", "EMM", "SE", "LCI", "UCI"),
-  align = c("l", "c", "c", "c", "c", "c","c"),
-  caption = NULL
-) %>%
-  row_spec(row = 0, align = "c") %>%
-  kable_styling(full_width = TRUE) %>%
-  footnote(
-    general_title = "Note.",
-    general = "EMMs are on the log-odds scale.",
-    threeparttable = TRUE,
-    footnote_as_chunk = TRUE
-  )
-
-
-# By PBH
-emm_PBH <- as.data.frame(emmeans_PBHvN$emmeans)
-emm_PBH_CI <- as.data.frame(CIPBHvN)
-emm_PBH <- emm_PBH %>% 
-  dplyr::select(PBH, Agent, PDE, emmean, SE, asymp.LCL, asymp.UCL)
-cat('<br></br>')
-cat('
-<div class="apa-table-title">
-  <span class="table-label">Table 4.</span> Estimated marginal means by PDE x Agent within PBH
-</div>')
-kable(
-  emm_PBH,
-  booktabs = TRUE, 
-  longtable = TRUE,
-  escape = FALSE,
-  digits = 2,
-  label = NA,
-  col.names = c("PBH", "Agent", "PDE", "EMM", "SE", "LCI", "UCI"),
-  align = c("l", "c", "c", "c", "c", "c","c"),
-  caption = NULL
-) %>%
-  row_spec(row = 0, align = "c") %>%
-  kable_styling(full_width = TRUE) %>%
-  footnote(
-    general_title = "Note.",
-    general = "EMMs are on the log-odds scale.",
-    threeparttable = TRUE,
-    footnote_as_chunk = TRUE
-  )
-
-# By PDE
-emm_PDE <- as.data.frame(emmeans_PDEvN$emmeans)
-emm_PDE_CI <- as.data.frame(confint(emmeans_PDEvN))
-
-emm_PDE <- emm_PDE %>% 
-  dplyr::select(PDE, Agent, PBH, emmean, SE, asymp.LCL, asymp.UCL)
-
-cat('<br></br>')
-cat('
-<div class="apa-table-title">
-  <span class="table-label">Table 5.</span> Estimated marginal means by Agent × PDE within PDE
-</div>')
-
-
-
-kable(
-  emm_PDE,
-  booktabs = TRUE, 
-  longtable = TRUE,
-  escape = FALSE,
-  digits = 2,
-  label = NA,
-  caption = NULL,              # suppress internal caption
-  col.names = c("PDE", "Agent", "PBH", "EMM", "SE", "LCI", "UCI"),
-  align = c("l", "c", "c", "c", "c", "c", "c")
-) %>%
-  row_spec(0, align = "c") %>%
-  kable_styling(full_width = TRUE) %>%
-  footnote(
-    general_title = "Note.",
-    general = "EMMs are on the log-odds scale.",
-    threeparttable = TRUE,
-    footnote_as_chunk = TRUE
-  )
-cat('<br></br>')
-
-
-
-#### PBH x PDE interaction
-emm_PBHvPDE <- as.data.frame(emmeans_PBHvPDE$emmeans)
-emm_PBHvPDE_CI <- as.data.frame(CIhVai_PBHvPDE)
-emm_PBHvPDE <- emm_PBHvPDE %>% 
-  dplyr::select(PBH, PDE, emmean, SE, asymp.LCL, asymp.UCL)
-cat('<br></br>')
-cat('
-<div class="apa-table-title">
-  <span class="table-label">Table 4.</span> Estimated marginal means of PDE within PBH
-</div>')
-kable(
-  emm_PBHvPDE,
-  booktabs = TRUE, 
-  longtable = TRUE,
-  escape = FALSE,
-  digits = 2,
-  label = NA,
-  col.names = c("PBH", "PDE", "EMM", "SE", "LCI", "UCI"),
-  align = c("l", "c", "c", "c", "c", "c","c"),
-  caption = NULL
-) %>%
-  row_spec(row = 0, align = "c") %>%
-  kable_styling(full_width = TRUE) %>%
-  footnote(
-    general_title = "Note.",
-    general = "EMMs are on the log-odds scale.",
-    threeparttable = TRUE,
-    footnote_as_chunk = TRUE
-  )
-
-contrast_agent <- as.data.frame(contrasts_hVai)
-
-# Clean and rename
-contrast_agent <- contrast_agent %>%
-  dplyr::select(Agent, PBH_pairwise, PDE_pairwise, estimate, SE,  z.ratio, p.value) %>%
-  rename(
-    Agent = Agent, 
-    PBH = PBH_pairwise,
-    PDE = PDE_pairwise,
-    Est      = estimate,
-    SE = SE, 
-    z = z.ratio,
-    p        = p.value
-  )
-
-cat('
-<div class="apa-table-title">
-  <span class="table-label">Table 6.</span> Pairwise contrasts for PBH × PDE within Agent
-</div>')
-kable(
-  contrast_agent,
-  booktabs = TRUE,
-  longtable = TRUE,
-  digits = 3,
-  col.names = c("Agent", "PBH", "PDE", "Estimate", "SE", "z", "p"),
-  align = c("c","l","c","c","c","c","c","c"),
-  caption = NULL
-) %>%
-  kable_styling(full_width = TRUE) %>%
-  footnote(
-    general_title = "Note.",
-    general = "Estimates are on the log-odds scale.",
-    threeparttable = TRUE,
-    footnote_as_chunk = TRUE
-  )
-
-contrast <- as.data.frame(contrasts_PBHvN)
-
-# Clean and rename
-contrast <- contrast %>%
-  dplyr::select(PBH,Agent_pairwise, PDE_pairwise, estimate, SE,  z.ratio, p.value) %>%
-  rename(
-    PBH = PBH, 
-    Agent = Agent_pairwise,
-    PDE = PDE_pairwise,
-    Est      = estimate,
-    SE = SE, 
-    z = z.ratio,
-    p        = p.value
-  )
-cat('<br></br>')
-cat('
-<div class="apa-table-title">
-  <span class="table-label">Table 7.</span> Pairwise contrasts for PBH × Agent within PBH
-</div>')
-kable(
-  contrast,
-  booktabs = TRUE,
-  longtable = TRUE,
-  digits = 3,
-  col.names = c("PBH", "Agent", "PDE", "Estimate", "SE", "z", "p"),
-  align = c("c","l","c","c","c","c","c","c"),
-  caption = NULL
-) %>%
-  kable_styling(full_width = TRUE) %>%
-  footnote(
-    general_title = "Note.",
-    general = "Estimates are on the log-odds scale.",
-    threeparttable = TRUE,
-    footnote_as_chunk = TRUE
-  )
-
-contrast <- as.data.frame(contrasts_PDEvN)
-
-# Clean and rename
-contrast <- contrast %>%
-  dplyr::select(PDE,Agent_pairwise, PBH_pairwise, estimate, SE,  z.ratio, p.value) %>%
-  rename(
-    PDE = PDE, 
-    Agent = Agent_pairwise,
-    PBH = PBH_pairwise,
-    Est      = estimate,
-    SE = SE, 
-    z = z.ratio,
-    p        = p.value
-  )
-cat('<br></br>')
-cat('
-<div class="apa-table-title">
-  <span class="table-label">Table 8.</span> Pairwise contrasts for PDE × Agent within PDE
-</div>')
-kable(
-  contrast,
-  booktabs = TRUE,
-  longtable = TRUE,
-  digits = 3,
-  col.names = c("PDE", "Agent", "PBH", "Estimate", "SE", "z", "p"),
-  align = c("c","l","c","c","c","c","c","c"),
-  caption = NULL
-) %>%
-  kable_styling(full_width = TRUE) %>%
-  footnote(
-    general_title = "Note.",
-    general = "Estimates are on the log-odds scale.",
-    threeparttable = TRUE,
-    footnote_as_chunk = TRUE
-  )
-cat('<br></br>')
-
-
-## PBH x PDE interaction
-contrast <- as.data.frame(contrasts_PBHvPDE)
-
-# Clean and rename
-contrast <- contrast %>%
-  dplyr::select(PBH, PDE_pairwise, estimate, SE,  z.ratio, p.value) %>%
-  rename(
-    PBH = PBH, 
-    PDE = PDE_pairwise,
-    Est      = estimate,
-    SE = SE, 
-    z = z.ratio,
-    p        = p.value
-  )
-cat('<br></br>')
-cat('
-<div class="apa-table-title">
-  <span class="table-label">Table 8.</span> Pairwise contrasts for PDE within PBH
-</div>')
-kable(
-  contrast,
-  booktabs = TRUE,
-  longtable = TRUE,
-  digits = 3,
-  col.names = c("PBH",  "PDE", "Estimate", "SE", "z", "p"),
-  align = c("c","l","c","c","c","c","c","c"),
-  caption = NULL
-) %>%
-  kable_styling(full_width = TRUE) %>%
-  footnote(
-    general_title = "Note.",
-    general = "Estimates are on the log-odds scale.",
-    threeparttable = TRUE,
-    footnote_as_chunk = TRUE
-  )
-cat('<br></br>')
-
-
-### Two Sided Equivalence Test for Main Analysis
-# set bounds to OR of 2.56 (log(2.56)=0.94) 
-TOaST <- equivalence_test(hVai, rule = "classic", range = c(-0.94,0.94))
-
-toast <- as.data.frame(TOaST)
-
-toast <- toast %>% 
-  dplyr::select(Parameter, CI_low, CI_high, ROPE_Equivalence, p) %>% 
-  rename(
-    Parameter = Parameter, 
-    LCI = CI_low, 
-    HCI = CI_high, 
-    Equivalence = ROPE_Equivalence, 
-    p = p
-  )
-
-cat('<br></br>')
-cat('
-<div class="apa-table-title">
-  <span class="table-label">Table 10.</span> TOST-test for Practical Equivalence for Main Model
-</div>')
-kable(
-  toast,
-  booktabs = TRUE,
-  longtable = TRUE,
-  digits = 3,
-  col.names = c("Parameter", "LCI", "HCI", "Equivalence", "p"),
-  align = c("l","c","c","c","c"),
-  caption = NULL
-) %>%
-  kable_styling(full_width = TRUE) %>%
-  footnote(
-    general_title = "Note.",
-    general = "Bounds set to mid-point value of small effect size boundary for log odds (±0.94). This is what the study was actually powered to detect for a three-way interaction. ",
-    threeparttable = TRUE,
-    footnote_as_chunk = TRUE
-  )
-cat('<br></br>')
-
-p <-plot(TOaST)
-
-# Custom colours & fonts
-p_custom <- p +
-  scale_color_brewer(palette = "Paired") +
-  scale_fill_brewer(palette = "Paired") +
-  theme_minimal(base_family = "Georgia") +
-  theme(
-    text        = element_text(family = "Georgia"),
-    axis.title  = element_text(family = "Georgia"),
-    axis.text   = element_text(family = "Georgia"),
-    legend.text = element_text(family = "Georgia"),
-    legend.title= element_text(family = "Georgia")
-  )
-cat('<br></br>')
-cat(' <div class="apa-figure-title">   <span class="figure-label">Figure 9.</span><br>
-  TOST results for Main Analysis 
-</div>
-')
-p_custom
-cat('<div style="color: black; font-size: 1em; margin-top: 0.25em;">
-<span style="font-style: italic; ">Note.</span> Bounds set to mid-point value of small effect size boundary for log odds (±0.94). This is what the study was actually powered to detect for a three-way interaction. 
-</div>')
-cat('<br></br>')
-
-
-
+## main analysis
+# prep names etc. 
+model_comp <- readRDS("outputs/model_comp_Study2_full.rds")
 model_comp_df <- as.data.frame(model_comp)
-model_comp_df <-  model_comp_df %>% 
-  dplyr::select(
-    Name, R2_marginal, R2_conditional, AIC, BIC
-  ) 
+model_comp_df <- model_comp_df %>% 
+  dplyr::select(Name, R2_marginal, R2_conditional, AIC, BIC)
 model_comp_df[4,"Name"] <- "PBH x Agent"
 model_comp_df[5,"Name"] <- "PDE x Agent"
 model_comp_df[6,"Name"] <- "PBH x PDE"
 model_comp_df[7,"Name"] <- "Full Model"
-cat('<br></br>')
-cat('
-<div class="apa-table-title">
-  <span class="table-label">Table 17.</span> Comparison of logistic GLMMs with alternative fixed-factor combinations predicting moral judgments
-</div>')
-kable(model_comp_df,
-      booktabs = TRUE,
-      caption = NULL,
-      digits = 2,
-      col.names = c("Model","R² Marg*", "R² Cond**", "AIC", "BIC"),
-      align = c("l","c","c","c","c"),) %>%
-  kable_styling(full_width = TRUE) %>%
-  footnote(
-    general_title = "*",
-    general = "Marg = Marginal, ** Cond = Conditional",
-    threeparttable = TRUE,
-    footnote_as_chunk = TRUE
-  )
-cat('<div style="color: black; font-size: 1em; margin-top: 0.25em;">
-<span style="font-style: italic; ">Note.</span> Lower AIC and BIC indicate better fit.
-</div>')
-cat('<br></br>')
+# run function with full model
+present_analysis(
+  model = readRDS("outputs/dropAgentIDdilRE_hVai_full_glmModel.rds"),
+  OR_labels = c("(Intercept)","PBH Violated","PDE Criteria Met","Agent (AI)","PBH Violated x PDE Criteria Met","PBH Violated x Agent (AI)","PDE Criteria Met x Agent (AI)", "PBH Violated x PDE Criteria Met x Agent (AI)"),
+  OR_title = "Overall Model",
+  logOdds_labels = c("(Intercept)","PBH Violated","PDE Criteria Met","Agent (AI)","PBH Violated x PDE Criteria Met","PBH Violated x Agent (AI)","PDE Criteria Met x Agent (AI)", "PBH Violated x PDE Criteria Met x Agent (AI)"),
+  logOdds_title = "Overall Model",
+  emmeans_list = list(
+    Agent = emmeans_hVai_full_Agent,
+    PBH = emmeans_hVai_full_PBH,
+    PDE = emmeans_hVai_full_PDE
+  ),
+  contrasts_list = list(
+    Agent = contrasts_hVai_full_Agent,
+    PBH = contrasts_hVai_full_PBH,
+    PDE = contrasts_hVai_full_PDE
+  ),
+  tost_obj = TOaST_hVai_full,
+  model_comp = model_comp_df,
+  diagnostic_plots = diagnostic_plots_hVai_full,
+  prefix = "Study2_full"
+)
+
+## reduced df 
+# prep names etc. 
+model_comp <- readRDS("outputs/model_comp_Study2_reduced.rds")
+model_comp_df <- as.data.frame(model_comp)
+model_comp_df <- model_comp_df %>% 
+  dplyr::select(Name, R2_marginal, R2_conditional, AIC, BIC)
+model_comp_df[4,"Name"] <- "PBH x Agent"
+model_comp_df[5,"Name"] <- "PDE x Agent"
+model_comp_df[6,"Name"] <- "PBH x PDE"
+model_comp_df[7,"Name"] <- "Full Model"
+present_analysis(
+  model = readRDS("outputs/dropAgentIDdilRE_hVai_reduced_glmModel.rds"),
+  OR_labels = c("(Intercept)","PBH Violated","PDE Criteria Met","Agent (AI)","PBH Violated x PDE Criteria Met","PBH Violated x Agent (AI)","PDE Criteria Met x Agent (AI)", "PBH Violated x PDE Criteria Met x Agent (AI)"),
+  OR_title = "Overall Model",
+  logOdds_labels = c("(Intercept)","PBH Violated","PDE Criteria Met","Agent (AI)","PBH Violated x PDE Criteria Met","PBH Violated x Agent (AI)","PDE Criteria Met x Agent (AI)", "PBH Violated x PDE Criteria Met x Agent (AI)"),
+  logOdds_title = "Overall Model",
+  emmeans_list = list(
+    Agent = emmeans_hVai_reduced_Agent,
+    PBH = emmeans_hVai_reduced_PBH,
+    PDE = emmeans_hVai_reduced_PDE
+  ),
+  contrasts_list = list(
+    Agent = contrasts_hVai_reduced_Agent,
+    PBH = contrasts_hVai_reduced_PBH,
+    PDE = contrasts_hVai_reduced_PDE
+  ),
+  tost_obj = TOaST_hVai_reduced,
+  model_comp = model_comp_df,
+  diagnostic_plots = diagnostic_plots_hVai_reduced,
+  prefix = "Study2_reduced"
+)
 
 
+## logRT as DV
+model_comp <- readRDS("outputs/model_comp_Study2_RT.rds")
+model_comp_df <- as.data.frame(model_comp)
+model_comp_df <- model_comp_df %>% 
+  dplyr::select(Name, R2_marginal, R2_conditional, AIC, BIC)
+model_comp_df[4,"Name"] <- "PBH x Agent"
+model_comp_df[5,"Name"] <- "PDE x Agent"
+model_comp_df[6,"Name"] <- "PBH x PDE"
+model_comp_df[7,"Name"] <- "Full Model"
+present_analysis(
+  model = readRDS("outputs/dropAgentIDdilRE_hVai_RT_glmModel.rds"),
+  OR_labels = c("(Intercept)","PBH Violated","PDE Criteria Met","Agent (AI)","PBH Violated x PDE Criteria Met","PBH Violated x Agent (AI)","PDE Criteria Met x Agent (AI)", "PBH Violated x PDE Criteria Met x Agent (AI)"),
+  OR_title = "Overall Model",
+  logOdds_labels = c("(Intercept)","PBH Violated","PDE Criteria Met","Agent (AI)","PBH Violated x PDE Criteria Met","PBH Violated x Agent (AI)","PDE Criteria Met x Agent (AI)", "PBH Violated x PDE Criteria Met x Agent (AI)"),
+  logOdds_title = "Overall Model",
+  emmeans_list = list(
+    Agent = emmeans_hVai_RT_Agent,
+    PBH = emmeans_hVai_RT_PBH,
+    PDE = emmeans_hVai_RT_PDE
+  ),
+  contrasts_list = list(
+    Agent = contrasts_hVai_RT_Agent,
+    PBH = contrasts_hVai_RT_PBH,
+    PDE = contrasts_hVai_RT_PDE
+  ),
+  tost_obj = TOaST_hVai_RT,
+  model_comp = model_comp_df,
+  diagnostic_plots = diagnostic_plots_hVai_RT,
+  prefix = "Study2_RT"
+)
 
-          )
+## logRT as RE
+model_comp <- readRDS("outputs/model_comp_Study2_RTRE.rds")
+model_comp_df <- as.data.frame(model_comp)
+model_comp_df <- model_comp_df %>% 
+  dplyr::select(Name, R2_marginal, R2_conditional, AIC, BIC)
+model_comp_df[4,"Name"] <- "PBH x Agent"
+model_comp_df[5,"Name"] <- "PDE x Agent"
+model_comp_df[6,"Name"] <- "PBH x PDE"
+model_comp_df[7,"Name"] <- "Full Model"
+present_analysis(
+  model = readRDS("outputs/dropAgentIDdilRE_hVai_RTRE_glmModel.rds"),
+  OR_labels = c("(Intercept)","PBH Violated","PDE Criteria Met","Agent (AI)","PBH Violated x PDE Criteria Met","PBH Violated x Agent (AI)","PDE Criteria Met x Agent (AI)", "PBH Violated x PDE Criteria Met x Agent (AI)"),
+  OR_title = "Overall Model",
+  logOdds_labels = c("(Intercept)","PBH Violated","PDE Criteria Met","Agent (AI)","PBH Violated x PDE Criteria Met","PBH Violated x Agent (AI)","PDE Criteria Met x Agent (AI)", "PBH Violated x PDE Criteria Met x Agent (AI)"),
+  logOdds_title = "Overall Model",
+  emmeans_list = list(
+    Agent = emmeans_hVai_RTRE_Agent,
+    PBH = emmeans_hVai_RTRE_PBH,
+    PDE = emmeans_hVai_RTRE_PDE
+  ),
+  contrasts_list = list(
+    Agent = contrasts_hVai_RTRE_Agent,
+    PBH = contrasts_hVai_RTRE_PBH,
+    PDE = contrasts_hVai_RTRE_PDE
+  ),
+  tost_obj = TOaST_hVai_RTRE,
+  model_comp = model_comp_df,
+  diagnostic_plots = diagnostic_plots_hVai_RTRE,
+  prefix = "Study2_RTRE"
+)
+
+## intent x Agent as fixed factors
+model_comp <- readRDS("outputs/model_comp_Study2_intentxAgent.rds")
+model_comp_df <- as.data.frame(model_comp)
+model_comp_df <- model_comp_df %>% 
+  dplyr::select(Name, R2_marginal, R2_conditional, AIC, BIC)
+model_comp_df[4,"Name"] <- "PBH x Agent"
+model_comp_df[5,"Name"] <- "PDE x Agent"
+model_comp_df[6,"Name"] <- "PBH x PDE"
+model_comp_df[7,"Name"] <- "Full Model"
+present_analysis(
+  model = readRDS("outputs/dropAgentIDdilRE_hVai_intentxAgent_glmModel.rds"),
+  OR_labels = c("(Intercept)","PBH Violated","PDE Criteria Met","Agent (AI)","PBH Violated x PDE Criteria Met","PBH Violated x Agent (AI)","PDE Criteria Met x Agent (AI)", "PBH Violated x PDE Criteria Met x Agent (AI)"),
+  OR_title = "Overall Model",
+  logOdds_labels = c("(Intercept)","PBH Violated","PDE Criteria Met","Agent (AI)","PBH Violated x PDE Criteria Met","PBH Violated x Agent (AI)","PDE Criteria Met x Agent (AI)", "PBH Violated x PDE Criteria Met x Agent (AI)"),
+  logOdds_title = "Overall Model",
+  emmeans_list = list(
+    Agent = emmeans_hVai_intentxAgent_Agent,
+    PBH = emmeans_hVai_intentxAgent_PBH,
+    PDE = emmeans_hVai_intentxAgent_PDE
+  ),
+  contrasts_list = list(
+    Agent = contrasts_hVai_intentxAgent_Agent,
+    PBH = contrasts_hVai_intentxAgent_PBH,
+    PDE = contrasts_hVai_intentxAgent_PDE
+  ),
+  tost_obj = TOaST_hVai_intentxAgent,
+  model_comp = model_comp_df,
+  diagnostic_plots = diagnostic_plots_hVai_intentxAgent,
+  prefix = "Study2_intentxAgent"
+)
+
+## intent as fixed factor
+model_comp <- readRDS("outputs/model_comp_Study2_intent.rds")
+model_comp_df <- as.data.frame(model_comp)
+model_comp_df <- model_comp_df %>% 
+  dplyr::select(Name, R2_marginal, R2_conditional, AIC, BIC)
+model_comp_df[4,"Name"] <- "PBH x Agent"
+model_comp_df[5,"Name"] <- "PDE x Agent"
+model_comp_df[6,"Name"] <- "PBH x PDE"
+model_comp_df[7,"Name"] <- "Full Model"
+present_analysis(
+  model = readRDS("outputs/dropAgentIDdilRE_hVai_intent_glmModel.rds"),
+  OR_labels = c("(Intercept)","PBH Violated","PDE Criteria Met","Agent (AI)","PBH Violated x PDE Criteria Met","PBH Violated x Agent (AI)","PDE Criteria Met x Agent (AI)", "PBH Violated x PDE Criteria Met x Agent (AI)"),
+  OR_title = "Overall Model",
+  logOdds_labels = c("(Intercept)","PBH Violated","PDE Criteria Met","Agent (AI)","PBH Violated x PDE Criteria Met","PBH Violated x Agent (AI)","PDE Criteria Met x Agent (AI)", "PBH Violated x PDE Criteria Met x Agent (AI)"),
+  logOdds_title = "Overall Model",
+  emmeans_list = list(
+    Agent = emmeans_hVai_intent_Agent,
+    PBH = emmeans_hVai_intent_PBH,
+    PDE = emmeans_hVai_intent_PDE
+  ),
+  contrasts_list = list(
+    Agent = contrasts_hVai_intent_Agent,
+    PBH = contrasts_hVai_intent_PBH,
+    PDE = contrasts_hVai_intent_PDE
+  ),
+  tost_obj = TOaST_hVai_intent,
+  model_comp = model_comp_df,
+  diagnostic_plots = diagnostic_plots_hVai_intent,
+  prefix = "Study2_intent"
+)
+
+## REDUCED DATA
+## logRT as DV
+model_comp <- readRDS("outputs/model_comp_Study2_reduced_RT.rds")
+model_comp_df <- as.data.frame(model_comp)
+model_comp_df <- model_comp_df %>% 
+  dplyr::select(Name, R2_marginal, R2_conditional, AIC, BIC)
+model_comp_df[4,"Name"] <- "PBH x Agent"
+model_comp_df[5,"Name"] <- "PDE x Agent"
+model_comp_df[6,"Name"] <- "PBH x PDE"
+model_comp_df[7,"Name"] <- "Full Model"
+present_analysis(
+  model = readRDS("outputs/dropAgentIDdilRE_hVai_reduced_RT_glmModel.rds"),
+  OR_labels = c("(Intercept)","PBH Violated","PDE Criteria Met","Agent (AI)","PBH Violated x PDE Criteria Met","PBH Violated x Agent (AI)","PDE Criteria Met x Agent (AI)", "PBH Violated x PDE Criteria Met x Agent (AI)"),
+  OR_title = "Overall Model",
+  logOdds_labels = c("(Intercept)","PBH Violated","PDE Criteria Met","Agent (AI)","PBH Violated x PDE Criteria Met","PBH Violated x Agent (AI)","PDE Criteria Met x Agent (AI)", "PBH Violated x PDE Criteria Met x Agent (AI)"),
+  logOdds_title = "Overall Model",
+  emmeans_list = list(
+    Agent = emmeans_hVai_reduced_RT_Agent,
+    PBH = emmeans_hVai_reduced_RT_PBH,
+    PDE = emmeans_hVai_reduced_RT_PDE
+  ),
+  contrasts_list = list(
+    Agent = contrasts_hVai_reduced_RT_Agent,
+    PBH = contrasts_hVai_reduced_RT_PBH,
+    PDE = contrasts_hVai_reduced_RT_PDE
+  ),
+  tost_obj = TOaST_hVai_reduced_RT,
+  model_comp = model_comp_df,
+  diagnostic_plots = diagnostic_plots_hVai_reduced_RT,
+  prefix = "Study2_reduced_RT"
+)
+
+## logRT as RE
+model_comp <- readRDS("outputs/model_comp_Study2_reduced_RTRE.rds")
+model_comp_df <- as.data.frame(model_comp)
+model_comp_df <- model_comp_df %>% 
+  dplyr::select(Name, R2_marginal, R2_conditional, AIC, BIC)
+model_comp_df[4,"Name"] <- "PBH x Agent"
+model_comp_df[5,"Name"] <- "PDE x Agent"
+model_comp_df[6,"Name"] <- "PBH x PDE"
+model_comp_df[7,"Name"] <- "Full Model"
+present_analysis(
+  model = readRDS("outputs/dropAgentIDdilRE_hVai_reduced_RTRE_glmModel.rds"),
+  OR_labels = c("(Intercept)","PBH Violated","PDE Criteria Met","Agent (AI)","PBH Violated x PDE Criteria Met","PBH Violated x Agent (AI)","PDE Criteria Met x Agent (AI)", "PBH Violated x PDE Criteria Met x Agent (AI)"),
+  OR_title = "Overall Model",
+  logOdds_labels = c("(Intercept)","PBH Violated","PDE Criteria Met","Agent (AI)","PBH Violated x PDE Criteria Met","PBH Violated x Agent (AI)","PDE Criteria Met x Agent (AI)", "PBH Violated x PDE Criteria Met x Agent (AI)"),
+  logOdds_title = "Overall Model",
+  emmeans_list = list(
+    Agent = emmeans_hVai_reduced_RTRE_Agent,
+    PBH = emmeans_hVai_reduced_RTRE_PBH,
+    PDE = emmeans_hVai_reduced_RTRE_PDE
+  ),
+  contrasts_list = list(
+    Agent = contrasts_hVai_reduced_RTRE_Agent,
+    PBH = contrasts_hVai_reduced_RTRE_PBH,
+    PDE = contrasts_hVai_reduced_RTRE_PDE
+  ),
+  tost_obj = TOaST_hVai_reduced_RTRE,
+  model_comp = model_comp_df,
+  diagnostic_plots = diagnostic_plots_hVai_reduced_RTRE,
+  prefix = "Study2_reduced_RTRE"
+)
+
+## intent x Agent as fixed factors
+model_comp <- readRDS("outputs/model_comp_Study2_reduced_intentxAgent.rds")
+model_comp_df <- as.data.frame(model_comp)
+model_comp_df <- model_comp_df %>% 
+  dplyr::select(Name, R2_marginal, R2_conditional, AIC, BIC)
+model_comp_df[4,"Name"] <- "PBH x Agent"
+model_comp_df[5,"Name"] <- "PDE x Agent"
+model_comp_df[6,"Name"] <- "PBH x PDE"
+model_comp_df[7,"Name"] <- "Full Model"
+present_analysis(
+  model = readRDS("outputs/dropAgentIDdilRE_hVai_reduced_intentxAgent_glmModel.rds"),
+  OR_labels = c("(Intercept)","PBH Violated","PDE Criteria Met","Agent (AI)","PBH Violated x PDE Criteria Met","PBH Violated x Agent (AI)","PDE Criteria Met x Agent (AI)", "PBH Violated x PDE Criteria Met x Agent (AI)"),
+  OR_title = "Overall Model",
+  logOdds_labels = c("(Intercept)","PBH Violated","PDE Criteria Met","Agent (AI)","PBH Violated x PDE Criteria Met","PBH Violated x Agent (AI)","PDE Criteria Met x Agent (AI)", "PBH Violated x PDE Criteria Met x Agent (AI)"),
+  logOdds_title = "Overall Model",
+  emmeans_list = list(
+    Agent = emmeans_hVai_reduced_intentxAgent_Agent,
+    PBH = emmeans_hVai_reduced_intentxAgent_PBH,
+    PDE = emmeans_hVai_reduced_intentxAgent_PDE
+  ),
+  contrasts_list = list(
+    Agent = contrasts_hVai_reduced_intentxAgent_Agent,
+    PBH = contrasts_hVai_reduced_intentxAgent_PBH,
+    PDE = contrasts_hVai_reduced_intentxAgent_PDE
+  ),
+  tost_obj = TOaST_hVai_reduced_intentxAgent,
+  model_comp = model_comp_df,
+  diagnostic_plots = diagnostic_plots_hVai_reduced_intentxAgent,
+  prefix = "Study2_reduced_intentxAgent"
+)
+
+## intent as fixed factor
+model_comp <- readRDS("outputs/model_comp_Study2_reduced_intent.rds")
+model_comp_df <- as.data.frame(model_comp)
+model_comp_df <- model_comp_df %>% 
+  dplyr::select(Name, R2_marginal, R2_conditional, AIC, BIC)
+model_comp_df[4,"Name"] <- "PBH x Agent"
+model_comp_df[5,"Name"] <- "PDE x Agent"
+model_comp_df[6,"Name"] <- "PBH x PDE"
+model_comp_df[7,"Name"] <- "Full Model"
+present_analysis(
+  model = readRDS("outputs/dropAgentIDdilRE_hVai_reduced_intent_glmModel.rds"),
+  OR_labels = c("(Intercept)","PBH Violated","PDE Criteria Met","Agent (AI)","PBH Violated x PDE Criteria Met","PBH Violated x Agent (AI)","PDE Criteria Met x Agent (AI)", "PBH Violated x PDE Criteria Met x Agent (AI)"),
+  OR_title = "Overall Model",
+  logOdds_labels = c("(Intercept)","PBH Violated","PDE Criteria Met","Agent (AI)","PBH Violated x PDE Criteria Met","PBH Violated x Agent (AI)","PDE Criteria Met x Agent (AI)", "PBH Violated x PDE Criteria Met x Agent (AI)"),
+  logOdds_title = "Overall Model",
+  emmeans_list = list(
+    Agent = emmeans_hVai_reduced_intent_Agent,
+    PBH = emmeans_hVai_reduced_intent_PBH,
+    PDE = emmeans_hVai_reduced_intent_PDE
+  ),
+  contrasts_list = list(
+    Agent = contrasts_hVai_reduced_intent_Agent,
+    PBH = contrasts_hVai_reduced_intent_PBH,
+    PDE = contrasts_hVai_reduced_intent_PDE
+  ),
+  tost_obj = TOaST_hVai_reduced_intent,
+  model_comp = model_comp_df,
+  diagnostic_plots = diagnostic_plots_hVai_reduced_intent,
+  prefix = "Study2_reduced_intent"
+)
+
+
+## match df model
+# prep names etc. 
+model_comp <- readRDS("outputs/model_comp_Study2_match.rds")
+model_comp_df <- as.data.frame(model_comp)
+model_comp_df <- model_comp_df %>% 
+  dplyr::select(Name, R2_marginal, R2_conditional, AIC, BIC)
+model_comp_df[4,"Name"] <- "PBH x Agent"
+model_comp_df[5,"Name"] <- "PDE x Agent"
+model_comp_df[6,"Name"] <- "PBH x PDE"
+model_comp_df[7,"Name"] <- "match Model"
+# run function with match model
+present_analysis(
+  model = readRDS("outputs/dropAgentIDdilRE_hVai_match_glmModel.rds"),
+  OR_labels = c("(Intercept)","PBH Violated","PDE Criteria Met","Agent (AI)","PBH Violated x PDE Criteria Met","PBH Violated x Agent (AI)","PDE Criteria Met x Agent (AI)", "PBH Violated x PDE Criteria Met x Agent (AI)"),
+  OR_title = "Overall Model",
+  logOdds_labels = c("(Intercept)","PBH Violated","PDE Criteria Met","Agent (AI)","PBH Violated x PDE Criteria Met","PBH Violated x Agent (AI)","PDE Criteria Met x Agent (AI)", "PBH Violated x PDE Criteria Met x Agent (AI)"),
+  logOdds_title = "Overall Model",
+  emmeans_list = list(
+    Agent = emmeans_hVai_match_Agent,
+    PBH = emmeans_hVai_match_PBH,
+    PDE = emmeans_hVai_match_PDE
+  ),
+  contrasts_list = list(
+    Agent = contrasts_hVai_match_Agent,
+    PBH = contrasts_hVai_match_PBH,
+    PDE = contrasts_hVai_match_PDE
+  ),
+  tost_obj = TOaST_hVai_match,
+  model_comp = model_comp_df,
+  diagnostic_plots = diagnostic_plots_hVai_match,
+  prefix = "Study2_match"
+)
+
+## logRT as DV
+present_analysis(
+  model = readRDS("outputs/dropAgentIDdilRE_hVai_match_RT_glmModel.rds"),
+  OR_labels = c("(Intercept)","PBH Violated","PDE Criteria Met","Agent (AI)","PBH Violated x PDE Criteria Met","PBH Violated x Agent (AI)","PDE Criteria Met x Agent (AI)", "PBH Violated x PDE Criteria Met x Agent (AI)"),
+  OR_title = "Overall Model",
+  logOdds_labels = c("(Intercept)","PBH Violated","PDE Criteria Met","Agent (AI)","PBH Violated x PDE Criteria Met","PBH Violated x Agent (AI)","PDE Criteria Met x Agent (AI)", "PBH Violated x PDE Criteria Met x Agent (AI)"),
+  logOdds_title = "Overall Model",
+  emmeans_list = list(
+    Agent = emmeans_hVai_match_RT_Agent,
+    PBH = emmeans_hVai_match_RT_PBH,
+    PDE = emmeans_hVai_match_RT_PDE
+  ),
+  contrasts_list = list(
+    Agent = contrasts_hVai_match_RT_Agent,
+    PBH = contrasts_hVai_match_RT_PBH,
+    PDE = contrasts_hVai_match_RT_PDE
+  ),
+  tost_obj = TOaST_hVai_match_RT,
+  model_comp = model_comp_df,
+  diagnostic_plots = diagnostic_plots_hVai_match_RT,
+  prefix = "Study2_match_RT"
+)
+
+## logRT as RE
+present_analysis(
+  model = readRDS("outputs/dropAgentIDdilRE_hVai_match_RTRE_glmModel.rds"),
+  OR_labels = c("(Intercept)","PBH Violated","PDE Criteria Met","Agent (AI)","PBH Violated x PDE Criteria Met","PBH Violated x Agent (AI)","PDE Criteria Met x Agent (AI)", "PBH Violated x PDE Criteria Met x Agent (AI)"),
+  OR_title = "Overall Model",
+  logOdds_labels = c("(Intercept)","PBH Violated","PDE Criteria Met","Agent (AI)","PBH Violated x PDE Criteria Met","PBH Violated x Agent (AI)","PDE Criteria Met x Agent (AI)", "PBH Violated x PDE Criteria Met x Agent (AI)"),
+  logOdds_title = "Overall Model",
+  emmeans_list = list(
+    Agent = emmeans_hVai_match_RTRE_Agent,
+    PBH = emmeans_hVai_match_RTRE_PBH,
+    PDE = emmeans_hVai_match_RTRE_PDE
+  ),
+  contrasts_list = list(
+    Agent = contrasts_hVai_match_RTRE_Agent,
+    PBH = contrasts_hVai_match_RTRE_PBH,
+    PDE = contrasts_hVai_match_RTRE_PDE
+  ),
+  tost_obj = TOaST_hVai_match_RTRE,
+  model_comp = model_comp_df,
+  diagnostic_plots = diagnostic_plots_hVai_match_RTRE,
+  prefix = "Study2_match_RTRE"
+)
+
+## intent x Agent as fixed factors
+present_analysis(
+  model = readRDS("outputs/dropAgentIDdilRE_hVai_match_intentxAgent_glmModel.rds"),
+  OR_labels = c("(Intercept)","PBH Violated","PDE Criteria Met","Agent (AI)","PBH Violated x PDE Criteria Met","PBH Violated x Agent (AI)","PDE Criteria Met x Agent (AI)", "PBH Violated x PDE Criteria Met x Agent (AI)"),
+  OR_title = "Overall Model",
+  logOdds_labels = c("(Intercept)","PBH Violated","PDE Criteria Met","Agent (AI)","PBH Violated x PDE Criteria Met","PBH Violated x Agent (AI)","PDE Criteria Met x Agent (AI)", "PBH Violated x PDE Criteria Met x Agent (AI)"),
+  logOdds_title = "Overall Model",
+  emmeans_list = list(
+    Agent = emmeans_hVai_match_intentxAgent_Agent,
+    PBH = emmeans_hVai_match_intentxAgent_PBH,
+    PDE = emmeans_hVai_match_intentxAgent_PDE
+  ),
+  contrasts_list = list(
+    Agent = contrasts_hVai_match_intentxAgent_Agent,
+    PBH = contrasts_hVai_match_intentxAgent_PBH,
+    PDE = contrasts_hVai_match_intentxAgent_PDE
+  ),
+  tost_obj = TOaST_hVai_match_intentxAgent,
+  model_comp = model_comp_df,
+  diagnostic_plots = diagnostic_plots_hVai_match_intentxAgent,
+  prefix = "Study2_match_intentxAgent"
+)
+
+## intent as fixed factor
+present_analysis(
+  model = readRDS("outputs/dropAgentIDdilRE_hVai_match_intent_glmModel.rds"),
+  OR_labels = c("(Intercept)","PBH Violated","PDE Criteria Met","Agent (AI)","PBH Violated x PDE Criteria Met","PBH Violated x Agent (AI)","PDE Criteria Met x Agent (AI)", "PBH Violated x PDE Criteria Met x Agent (AI)"),
+  OR_title = "Overall Model",
+  logOdds_labels = c("(Intercept)","PBH Violated","PDE Criteria Met","Agent (AI)","PBH Violated x PDE Criteria Met","PBH Violated x Agent (AI)","PDE Criteria Met x Agent (AI)", "PBH Violated x PDE Criteria Met x Agent (AI)"),
+  logOdds_title = "Overall Model",
+  emmeans_list = list(
+    Agent = emmeans_hVai_match_intent_Agent,
+    PBH = emmeans_hVai_match_intent_PBH,
+    PDE = emmeans_hVai_match_intent_PDE
+  ),
+  contrasts_list = list(
+    Agent = contrasts_hVai_match_intent_Agent,
+    PBH = contrasts_hVai_match_intent_PBH,
+    PDE = contrasts_hVai_match_intent_PDE
+  ),
+  tost_obj = TOaST_hVai_match_intent,
+  model_comp = model_comp_df,
+  diagnostic_plots = diagnostic_plots_hVai_match_intent,
+  prefix = "Study2_match_intent"
+)
+
+
+## match reduced df
+# prep names etc. 
+model_comp <- readRDS("outputs/model_comp_Study2_reduced_match.rds")
+model_comp_df <- as.data.frame(model_comp)
+model_comp_df <- model_comp_df %>% 
+  dplyr::select(Name, R2_marginal, R2_conditional, AIC, BIC)
+model_comp_df[4,"Name"] <- "PBH x Agent"
+model_comp_df[5,"Name"] <- "PDE x Agent"
+model_comp_df[6,"Name"] <- "PBH x PDE"
+model_comp_df[7,"Name"] <- "reduced_match Model"
+# run function with reduced_match model
+present_analysis(
+  model = readRDS("outputs/dropAgentIDdilRE_hVai_reduced_match_glmModel.rds"),
+  OR_labels = c("(Intercept)","PBH Violated","PDE Criteria Met","Agent (AI)","PBH Violated x PDE Criteria Met","PBH Violated x Agent (AI)","PDE Criteria Met x Agent (AI)", "PBH Violated x PDE Criteria Met x Agent (AI)"),
+  OR_title = "Overall Model",
+  logOdds_labels = c("(Intercept)","PBH Violated","PDE Criteria Met","Agent (AI)","PBH Violated x PDE Criteria Met","PBH Violated x Agent (AI)","PDE Criteria Met x Agent (AI)", "PBH Violated x PDE Criteria Met x Agent (AI)"),
+  logOdds_title = "Overall Model",
+  emmeans_list = list(
+    Agent = emmeans_hVai_reduced_match_Agent,
+    PBH = emmeans_hVai_reduced_match_PBH,
+    PDE = emmeans_hVai_reduced_match_PDE
+  ),
+  contrasts_list = list(
+    Agent = contrasts_hVai_reduced_match_Agent,
+    PBH = contrasts_hVai_reduced_match_PBH,
+    PDE = contrasts_hVai_reduced_match_PDE
+  ),
+  tost_obj = TOaST_hVai_reduced_match,
+  model_comp = model_comp_df,
+  diagnostic_plots = diagnostic_plots_hVai_reduced_match,
+  prefix = "Study2_reduced_match"
+)
+
+## logRT as DV
+present_analysis(
+  model = readRDS("outputs/dropAgentIDdilRE_hVai_reduced_match_RT_glmModel.rds"),
+  OR_labels = c("(Intercept)","PBH Violated","PDE Criteria Met","Agent (AI)","PBH Violated x PDE Criteria Met","PBH Violated x Agent (AI)","PDE Criteria Met x Agent (AI)", "PBH Violated x PDE Criteria Met x Agent (AI)"),
+  OR_title = "Overall Model",
+  logOdds_labels = c("(Intercept)","PBH Violated","PDE Criteria Met","Agent (AI)","PBH Violated x PDE Criteria Met","PBH Violated x Agent (AI)","PDE Criteria Met x Agent (AI)", "PBH Violated x PDE Criteria Met x Agent (AI)"),
+  logOdds_title = "Overall Model",
+  emmeans_list = list(
+    Agent = emmeans_hVai_reduced_match_RT_Agent,
+    PBH = emmeans_hVai_reduced_match_RT_PBH,
+    PDE = emmeans_hVai_reduced_match_RT_PDE
+  ),
+  contrasts_list = list(
+    Agent = contrasts_hVai_reduced_match_RT_Agent,
+    PBH = contrasts_hVai_reduced_match_RT_PBH,
+    PDE = contrasts_hVai_reduced_match_RT_PDE
+  ),
+  tost_obj = TOaST_hVai_reduced_match_RT,
+  model_comp = model_comp_df,
+  diagnostic_plots = diagnostic_plots_hVai_reduced_match_RT,
+  prefix = "Study2_reduced_match_RT"
+)
+
+## logRT as RE
+present_analysis(
+  model = readRDS("outputs/dropAgentIDdilRE_hVai_reduced_match_RTRE_glmModel.rds"),
+  OR_labels = c("(Intercept)","PBH Violated","PDE Criteria Met","Agent (AI)","PBH Violated x PDE Criteria Met","PBH Violated x Agent (AI)","PDE Criteria Met x Agent (AI)", "PBH Violated x PDE Criteria Met x Agent (AI)"),
+  OR_title = "Overall Model",
+  logOdds_labels = c("(Intercept)","PBH Violated","PDE Criteria Met","Agent (AI)","PBH Violated x PDE Criteria Met","PBH Violated x Agent (AI)","PDE Criteria Met x Agent (AI)", "PBH Violated x PDE Criteria Met x Agent (AI)"),
+  logOdds_title = "Overall Model",
+  emmeans_list = list(
+    Agent = emmeans_hVai_reduced_match_RTRE_Agent,
+    PBH = emmeans_hVai_reduced_match_RTRE_PBH,
+    PDE = emmeans_hVai_reduced_match_RTRE_PDE
+  ),
+  contrasts_list = list(
+    Agent = contrasts_hVai_reduced_match_RTRE_Agent,
+    PBH = contrasts_hVai_reduced_match_RTRE_PBH,
+    PDE = contrasts_hVai_reduced_match_RTRE_PDE
+  ),
+  tost_obj = TOaST_hVai_reduced_match_RTRE,
+  model_comp = model_comp_df,
+  diagnostic_plots = diagnostic_plots_hVai_reduced_match_RTRE,
+  prefix = "Study2_reduced_match_RTRE"
+)
+
+## intent x Agent as fixed factors
+present_analysis(
+  model = readRDS("outputs/dropAgentIDdilRE_hVai_reduced_match_intentxAgent_glmModel.rds"),
+  OR_labels = c("(Intercept)","PBH Violated","PDE Criteria Met","Agent (AI)","PBH Violated x PDE Criteria Met","PBH Violated x Agent (AI)","PDE Criteria Met x Agent (AI)", "PBH Violated x PDE Criteria Met x Agent (AI)"),
+  OR_title = "Overall Model",
+  logOdds_labels = c("(Intercept)","PBH Violated","PDE Criteria Met","Agent (AI)","PBH Violated x PDE Criteria Met","PBH Violated x Agent (AI)","PDE Criteria Met x Agent (AI)", "PBH Violated x PDE Criteria Met x Agent (AI)"),
+  logOdds_title = "Overall Model",
+  emmeans_list = list(
+    Agent = emmeans_hVai_reduced_match_intentxAgent_Agent,
+    PBH = emmeans_hVai_reduced_match_intentxAgent_PBH,
+    PDE = emmeans_hVai_reduced_match_intentxAgent_PDE
+  ),
+  contrasts_list = list(
+    Agent = contrasts_hVai_reduced_match_intentxAgent_Agent,
+    PBH = contrasts_hVai_reduced_match_intentxAgent_PBH,
+    PDE = contrasts_hVai_reduced_match_intentxAgent_PDE
+  ),
+  tost_obj = TOaST_hVai_reduced_match_intentxAgent,
+  model_comp = model_comp_df,
+  diagnostic_plots = diagnostic_plots_hVai_reduced_match_intentxAgent,
+  prefix = "Study2_reduced_match_intentxAgent"
+)
+
+## intent as fixed factor
+present_analysis(
+  model = readRDS("outputs/dropAgentIDdilRE_hVai_reduced_match_intent_glmModel.rds"),
+  OR_labels = c("(Intercept)","PBH Violated","PDE Criteria Met","Agent (AI)","PBH Violated x PDE Criteria Met","PBH Violated x Agent (AI)","PDE Criteria Met x Agent (AI)", "PBH Violated x PDE Criteria Met x Agent (AI)"),
+  OR_title = "Overall Model",
+  logOdds_labels = c("(Intercept)","PBH Violated","PDE Criteria Met","Agent (AI)","PBH Violated x PDE Criteria Met","PBH Violated x Agent (AI)","PDE Criteria Met x Agent (AI)", "PBH Violated x PDE Criteria Met x Agent (AI)"),
+  logOdds_title = "Overall Model",
+  emmeans_list = list(
+    Agent = emmeans_hVai_reduced_match_intent_Agent,
+    PBH = emmeans_hVai_reduced_match_intent_PBH,
+    PDE = emmeans_hVai_reduced_match_intent_PDE
+  ),
+  contrasts_list = list(
+    Agent = contrasts_hVai_reduced_match_intent_Agent,
+    PBH = contrasts_hVai_reduced_match_intent_PBH,
+    PDE = contrasts_hVai_reduced_match_intent_PDE
+  ),
+  tost_obj = TOaST_hVai_reduced_match_intent,
+  model_comp = model_comp_df,
+  diagnostic_plots = diagnostic_plots_hVai_reduced_match_intent,
+  prefix = "Study2_reduced_match_intent"
+)
