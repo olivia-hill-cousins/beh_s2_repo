@@ -2,7 +2,7 @@
 *
 
 # Unignore the .gitignore file itself
-!.gitignore
+!.gitignore/
 
 # Unignore the folder
 !data cleaning and analysis/
