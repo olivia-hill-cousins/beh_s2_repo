@@ -1,0 +1,23 @@
+# Ignore everything
+*
+
+# Unignore the .gitignore file itself
+!.gitignore
+
+# Unignore the folder
+!data cleaning and analysis/
+
+# Unignore the specific HTML file
+!data cleaning and analysis/beh_s2_m-r.html
+
+# Unignore pre-registration materials
+!pre-registration materials/
+!pre-registration materials/**
+
+# Ignore typical RStudio clutter
+.Rproj.user
+.Rhistory
+.RData
+.httr-oauth
+.DS_Store
+.quarto
