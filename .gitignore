@@ -5,14 +5,14 @@
 !.gitignore/
 
 # Unignore the folder
-!data cleaning and analysis/
+!data_cleaning_and_analysis/
 
 # Unignore the specific HTML file
-!data cleaning and analysis/beh_s2_m-r.html
+!data_cleaning_and_analysis/beh_s2_m-r.html
 
 # Unignore pre-registration materials
-!pre-registration materials/
-!pre-registration materials/**
+!pre-registration_materials/
+!pre-registration_materials/**
 
 # Ignore typical RStudio clutter
 .Rproj.user
