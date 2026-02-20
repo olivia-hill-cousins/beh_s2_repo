@@ -188,7 +188,7 @@ kable(gender_table[, c("Gender", "n", "pct.Freq")],
       digits = 1)
 
 ```
-
+<!--
 ### Ethnic / Cultural Identities  
 
 ```{r ethnicity tables, echo=FALSE,results='asis'}
@@ -279,7 +279,7 @@ cat('</td></tr></table>')
 
 
 ```
-
+--->
 ### Nationalities
 For this study, the sample was fixed to US nationals & residents. Here I run a quick check to ensure that this was the case. 
 ```{r nationality tables, echo=FALSE,results='asis'}

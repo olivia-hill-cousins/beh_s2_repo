@@ -27,7 +27,7 @@
 "15132610","Man","2","59","United States","United States",NA,NA,NA,NA,"British or English or Scottish or Welsh or Northern Irish",NA,NA,"White","FALSE","British or English or Scottish or Welsh or Northern Irish","British or English or Scottish or Welsh or Northern Irish"
 "15132623","Man","2","65","United States","United States",NA,NA,NA,"Americsn, American, White, White",NA,NA,NA,"Multiple","FALSE","Americsn, American, White, White","Americsn, American, White, White"
 "15132660","Man","2","26","United States","United States",NA,NA,NA,NA,"British or English or Scottish or Welsh or Northern Irish",NA,NA,"White","FALSE","British or English or Scottish or Welsh or Northern Irish","British or English or Scottish or Welsh or Northern Irish"
-"15132676","Man","2","47","United States","United States",NA,NA,NA,NA,NA,NA,NA,NA,"FALSE","character(0)",NA
+"15132676","Man","2","47","United States","United States",NA,NA,NA,NA,"white",NA,NA,"White","FALSE","white","white"
 "15132679","Woman","1","50","United States","United States",NA,NA,NA,"White or White British *and* Asian or Asian British","British or English or Scottish or Welsh or Northern Irish",NA,NA,"White","TRUE","c(""White or White British *and* Asian or Asian British"", ""British or English or Scottish or Welsh or Northern Irish"")","White or White British *and* Asian or Asian British; British or English or Scottish or Welsh or Northern Irish"
 "15132689","Man","2","71","United States","United States",NA,NA,NA,NA,"brazilian, italian white",NA,NA,"White","FALSE","brazilian, italian white","brazilian, italian white"
 "15132693","Man","2","46","United States","United States",NA,NA,NA,NA,"Irish",NA,NA,"White","FALSE","Irish","Irish"
@@ -43,7 +43,7 @@
 "15132814","Woman","1","22","United States","United States","Arab or Arab British",NA,NA,NA,NA,NA,NA,"Arab","FALSE","Arab or Arab British","Arab or Arab British"
 "15132842","Woman","1","62","United States","United States",NA,NA,"African or African British",NA,NA,NA,NA,"Black","FALSE","African or African British","African or African British"
 "15132944","Woman","1","75","United States","United States",NA,NA,NA,NA,"British or English or Scottish or Welsh or Northern Irish",NA,NA,"White","FALSE","British or English or Scottish or Welsh or Northern Irish","British or English or Scottish or Welsh or Northern Irish"
-"15132952","Woman","1","42","United States","United States",NA,NA,NA,NA,NA,NA,NA,NA,"FALSE","character(0)",NA
+"15132952","Woman","1","42","United States","United States",NA,NA,NA,NA,"white american",NA,NA,"White","FALSE","white american","white american"
 "15132986","Man","2","35","United States","United States",NA,NA,"African or African British",NA,NA,NA,NA,"Black","FALSE","African or African British","African or African British"
 "15133028","Woman","1","61","United States","United States",NA,"Indian or Indian British",NA,NA,NA,NA,NA,"Asian","FALSE","Indian or Indian British","Indian or Indian British"
 "15133047","Man","2","79","United States","United States",NA,NA,NA,NA,"British or English or Scottish or Welsh or Northern Irish",NA,NA,"White","FALSE","British or English or Scottish or Welsh or Northern Irish","British or English or Scottish or Welsh or Northern Irish"

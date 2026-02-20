@@ -174,8 +174,10 @@ demo <- demo %>%
     questionnaire.qemh.cultural.white = case_when(
       Participant.Private.ID == "15132689" ~ "brazilian, italian white",
       Participant.Private.ID == "15133547" ~ "white american",
+      Participant.Private.ID == "15132952" ~ "white american",
       Participant.Private.ID == "15133528" ~ "white",
       Participant.Private.ID == "15133529" ~ "white",
+      Participant.Private.ID == "15132676" ~ "white",
       TRUE ~ questionnaire.qemh.cultural.white
     ),
     questionnaire.qemh.cultural.multiple = case_when(
@@ -321,6 +323,8 @@ combined <- result$combined
 #convert all columns to character class
 demo <- demo %>%
   mutate(across(everything(), as.character))
+
+
 # Identify columns to modify: all except those ending with .text or .quantised
 cols_to_modify <- names(demo)[!str_detect(names(demo), "\\.text|\\.quantised")]
 
@@ -385,6 +389,7 @@ demo <- demo %>%
     multiple_cultural = rowSums(across(all_of(cultural_cols), ~ !is.na(.) & . != "")) > 1
   )
 
+
 demo <- demo %>%
   rowwise() %>%
   mutate(
@@ -397,6 +402,7 @@ demo <- demo %>%
                           paste(identified_prefs, collapse = "; "))
   ) %>%
   ungroup()
+
 
 
 # finally, we add the demographics to the behavioural data
